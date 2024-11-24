@@ -1,16 +1,35 @@
 // import "./translations"
 
 import {
+	Entity,
 	EventsSDK,
-	GameRules,
-	GameState,
 	NotificationsSDK,
-	PlayerCustomData,
-	Rectangle,
+	Rune
 } from "github.com/octarine-public/wrapper/index"
 
-new (class CNotification {
-	constructor() {
+import { MenuManager } from "./menu"
+import { GameNotification } from "./notification"
 
+new (class CNotifications {
+	private readonly menu = new MenuManager()
+
+	constructor() {
+		EventsSDK.on("EntityCreated", this.EntityCreated.bind(this))
+	}
+
+	protected EntityCreated(entity: Entity) {
+		if (!this.menu.State.value) {
+			return true
+		}
+		if (!(entity instanceof Rune) || this.menu.runeState.value) {
+			return
+		}
+
+		NotificationsSDK.Push(
+			new GameNotification(
+				"soundboard.ay_ay_ay_cn",
+				"panorama/images/hud/reborn/rune_doubledamage.vtex_c"
+			)
+		)
 	}
 })()
