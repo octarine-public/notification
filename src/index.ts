@@ -21,12 +21,11 @@ new (class CNotifications {
 		if (!this.menu.State.value) {
 			return
 		}
-		if (!(entity instanceof Rune) || this.menu.runeState.value) {
-			console.log(entity instanceof Rune, this.menu.runeState.value, 1)
+		if (!(entity instanceof Rune) || !this.menu.runeState.value) {
 			return
 		}
 
-		console.log(1)
+		console.log(1, entity)
 
 		NotificationsSDK.Push(
 			new GameNotification(
