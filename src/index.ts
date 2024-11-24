@@ -3,6 +3,8 @@
 import {
 	Entity,
 	EventsSDK,
+	ExecuteOrder,
+	ImageData,
 	NotificationsSDK,
 	Rune
 } from "github.com/octarine-public/wrapper/index"
@@ -15,21 +17,32 @@ new (class CNotifications {
 
 	constructor() {
 		EventsSDK.on("EntityCreated", this.EntityCreated.bind(this))
+		EventsSDK.on("PrepareUnitOrders", this.PrepareUnitOrders.bind(this))
+		EventsSDK.on("GameEvent", this.GameEvent.bind(this))
 	}
 
 	protected EntityCreated(entity: Entity) {
 		if (!this.menu.State.value) {
 			return
 		}
-		if (!(entity instanceof Rune) || !this.menu.runeState.value) {
+		if (entity instanceof Rune && this.menu.runeState.value) {
+			NotificationsSDK.Push(
+				new GameNotification(
+					"soundboard.ay_ay_ay_cn",
+					ImageData.GetRuneTexture("regen")
+				)
+			)
+		}
+	}
+
+	protected PrepareUnitOrders(order: ExecuteOrder) {
+		if (!order.IsPlayerInput) {
 			return
 		}
+		console.log(order, "order")
+	}
 
-		NotificationsSDK.Push(
-			new GameNotification(
-				"soundboard.ay_ay_ay_cn",
-				"panorama/images/hud/reborn/rune_doubledamage.vtex_c"
-			)
-		)
+	protected GameEvent(eventName: string, obj: any) {
+		console.log(eventName, obj)
 	}
 })()

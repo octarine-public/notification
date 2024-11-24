@@ -1,4 +1,4 @@
-import { Menu } from "github.com/octarine-public/wrapper/index"
+import { ImageData, Menu } from "github.com/octarine-public/wrapper/index"
 
 export class MenuManager {
 	public readonly State: Menu.Toggle
@@ -6,7 +6,7 @@ export class MenuManager {
 
 	private readonly tree = this.baseNode.AddNode(
 		"game notifications",
-		"panorama/images/hud/reborn/item_purchase_bg_psd.vtex_c",
+		ImageData.Paths.Icons.icon_svg_other,
 		"notifications of game events"
 	)
 

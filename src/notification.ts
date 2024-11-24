@@ -40,6 +40,14 @@ export class GameNotification extends Notification {
 			alpha
 		)
 
+		RendererSDK.Text(
+			"lorem ipsum",
+			notificationSize.pos1,
+			Color.White,
+			RendererSDK.DefaultFontName,
+			16
+		)
+
 		RendererSDK.Image(this.image, textureSize.pos1, -1, textureSize.Size, alpha)
 	}
 
