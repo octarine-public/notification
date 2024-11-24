@@ -43,6 +43,10 @@ new (class CNotifications {
 	}
 
 	protected GameEvent(eventName: string, obj: any) {
+		if (eventName === "entity_hurt" || eventName === "entity_killed") {
+			return
+		}
+
 		console.log(eventName, obj)
 	}
 })()
