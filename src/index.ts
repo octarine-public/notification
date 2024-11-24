@@ -22,7 +22,7 @@ new (class CNotifications {
 			return
 		}
 		if (!(entity instanceof Rune) || this.menu.runeState.value) {
-			console.log(entity instanceof Rune, this.menu.runeState.value)
+			console.log(entity instanceof Rune, this.menu.runeState.value, 1)
 			return
 		}
 
