@@ -31,6 +31,7 @@ export class GameNotification extends Notification {
 		const alpha = Color.White.SetA(this.Opacity)
 		const notificationSize = this.GetNotificationSize(position)
 		const textureSize = this.GetTextureSize(notificationSize)
+		const textPosition = this.GetTextPosition(notificationSize, textureSize)
 
 		RendererSDK.Image(
 			this.BackgroundCover,
@@ -40,30 +41,36 @@ export class GameNotification extends Notification {
 			alpha
 		)
 
+		RendererSDK.Image(this.image, textureSize.pos1, -1, textureSize.Size, alpha)
+
 		RendererSDK.Text(
 			"lorem ipsum",
-			notificationSize.pos1,
+			textPosition.pos1,
 			Color.White,
 			RendererSDK.DefaultFontName,
 			16
 		)
-
-		RendererSDK.Image(this.image, textureSize.pos1, -1, textureSize.Size, alpha)
 	}
 
 	private GetTextureSize(position: Rectangle) {
 		const result = position.Clone()
-		result.Width = position.Width / 2
+		result.Width = position.Width / 3
 		result.Height = position.Height
-		result.x = position.x + position.Width / 2 - result.Width / 2
+		result.x = position.x
 		result.y = position.y
 		return result
 	}
 
 	private GetNotificationSize(position: Rectangle) {
 		const result = position.Clone()
-		result.x = position.x + position.Width / 2
-		result.Width = position.Width / 2
+		result.Width = position.Width
+		return result
+	}
+
+	private GetTextPosition(notificationSize: Rectangle, textureSize: Rectangle) {
+		const result = notificationSize.Clone()
+		result.x = textureSize.x + textureSize.Width
+		result.Width = notificationSize.Width - textureSize.Width
 		return result
 	}
 }
