@@ -1,8 +1,7 @@
-// import "./translations"
-
 import {
 	Entity,
 	EventsSDK,
+	GameRules,
 	ImageData,
 	NotificationsSDK,
 	Rune
@@ -16,8 +15,15 @@ new (class CNotifications {
 
 	constructor() {
 		EventsSDK.on("EntityCreated", this.EntityCreated.bind(this))
-		// EventsSDK.on("PrepareUnitOrders", this.PrepareUnitOrders.bind(this))
-		// EventsSDK.on("GameEvent", this.GameEvent.bind(this))
+		EventsSDK.on("PostDataUpdate", this.OnTick.bind(this))
+	}
+
+	protected OnTick(dt: number) {
+		if (dt === 0 || !this.menu.runeRemindState.value) {
+			return
+		}
+
+		console.log(this.timeToSpawnRune)
 	}
 
 	protected EntityCreated(entity: Entity) {
@@ -28,24 +34,15 @@ new (class CNotifications {
 			NotificationsSDK.Push(
 				new GameNotification(
 					"soundboard.ay_ay_ay_cn",
-					ImageData.GetRuneTexture("regen")
+					ImageData.GetRuneTexture(entity.Name),
+					"Spawned"
 				)
 			)
 		}
 	}
 
-	// protected PrepareUnitOrders(order: ExecuteOrder) {
-	// 	if (!order.IsPlayerInput) {
-	// 		return
-	// 	}
-	// 	console.log(order, "order")
-	// }
-
-	// protected GameEvent(eventName: string, obj: any) {
-	// 	if (eventName === "entity_hurt" || eventName === "entity_killed") {
-	// 		return
-	// 	}
-
-	// 	console.log(eventName, obj)
-	// }
+	private get timeToSpawnRune() {
+		// TO DO
+		return GameRules?.GameTime
+	}
 })()

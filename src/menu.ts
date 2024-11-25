@@ -12,10 +12,12 @@ export class MenuManager {
 
 	private readonly runeTree: Menu.Node
 	public readonly runeState: Menu.Toggle
+	public readonly runeRemindState: Menu.Toggle
 
 	constructor() {
 		this.State = this.tree.AddToggle("State")
 		this.runeTree = this.tree.AddNode("Runes notification")
 		this.runeState = this.runeTree.AddToggle("State")
+		this.runeRemindState = this.runeTree.AddToggle("Remind")
 	}
 }

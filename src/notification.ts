@@ -8,11 +8,13 @@ import {
 } from "github.com/octarine-public/wrapper/index"
 
 export class GameNotification extends Notification {
-	constructor(
-		playSoundName: string,
-		private readonly image: string
-	) {
+	private readonly image: string
+	private readonly text: string
+
+	constructor(playSoundName: string, image: string, text: string) {
 		super({ playSoundName, timeToShow: 5 * 1000 })
+		this.text = text
+		this.image = image
 	}
 
 	protected get InGameUI(): boolean {
@@ -23,15 +25,15 @@ export class GameNotification extends Notification {
 		return false
 	}
 
-	public Draw(position: Rectangle): void {
+	public Draw(position: Rectangle) {
 		if (!this.InGameUI) {
 			return
 		}
 
 		const alpha = Color.White.SetA(this.Opacity)
-		const notificationSize = this.GetNotificationSize(position)
-		const textureSize = this.GetTextureSize(notificationSize)
-		const textPosition = this.GetTextPosition(notificationSize, textureSize)
+		const notificationSize = this.getNotificationSize(position)
+		const textureSize = this.getImageSize(notificationSize)
+		const textPosition = this.getTextPosition(notificationSize, textureSize)
 
 		RendererSDK.Image(
 			this.BackgroundCover,
@@ -44,35 +46,72 @@ export class GameNotification extends Notification {
 		RendererSDK.Image(this.image, textureSize.pos1, -1, textureSize.Size, alpha)
 
 		RendererSDK.Text(
-			"lorem ipsum",
+			this.text,
 			textPosition.pos1,
 			Color.White,
 			RendererSDK.DefaultFontName,
-			16
+			this.getFontSize(notificationSize)
 		)
 	}
 
-	private GetTextureSize(position: Rectangle) {
+	private getImageSize(position: Rectangle) {
 		const result = position.Clone()
-		result.Width = position.Width / 3
-		result.Height = position.Height
+		const scaleFactor = 0.8
+		result.Width = (position.Width / 4) * scaleFactor
+		result.Height = position.Height * scaleFactor
 		result.x = position.x
-		result.y = position.y
+		result.y = position.y + (position.Height - result.Height) / 2
 		return result
 	}
 
-	private GetNotificationSize(position: Rectangle) {
+	private getNotificationSize(position: Rectangle): Rectangle {
 		const result = position.Clone()
-		result.Width = position.Width
+		result.Width = position.Width + 80
 		return result
 	}
 
-	private GetTextPosition(notificationSize: Rectangle, textureSize: Rectangle) {
-		const result = notificationSize.Clone()
-		const padding = 10
+	private getTextPosition(notifSize: Rectangle, textureSize: Rectangle): Rectangle {
+		const result = notifSize.Clone()
+		const padding = this.getPadding(textureSize)
 		result.x = textureSize.x + textureSize.Width + padding
-		result.Width = notificationSize.Width - textureSize.Width - padding
-		result.y = notificationSize.y + notificationSize.Height / 2 - 8
+		result.Width = notifSize.Width - textureSize.Width - padding
+		result.y = notifSize.y + notifSize.Height / 2 - 8
 		return result
+	}
+
+	private getFontSize(notifSize: Rectangle): number {
+		const minWidth = 230
+		const maxWidth = 265
+		const minFontSize = 14
+		const maxFontSize = 32
+
+		if (notifSize.Width <= minWidth) {
+			return minFontSize
+		}
+
+		if (notifSize.Width >= maxWidth) {
+			return maxFontSize
+		}
+
+		const scale = (notifSize.Width - minWidth) / (maxWidth - minWidth)
+		return Math.round(minFontSize + scale * (maxFontSize - minFontSize))
+	}
+
+	private getPadding(notifSize: Rectangle): number {
+		const minWidth = 230
+		const maxWidth = 265
+		const minPadding = 2
+		const maxPadding = 28
+
+		if (notifSize.Width <= minWidth) {
+			return minPadding
+		}
+
+		if (notifSize.Width >= maxWidth) {
+			return maxPadding
+		}
+
+		const scale = (notifSize.Width - minWidth) / (maxWidth - minWidth)
+		return Math.round(minPadding + scale * (maxPadding - minPadding))
 	}
 }
