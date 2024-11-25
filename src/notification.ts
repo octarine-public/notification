@@ -69,8 +69,10 @@ export class GameNotification extends Notification {
 
 	private GetTextPosition(notificationSize: Rectangle, textureSize: Rectangle) {
 		const result = notificationSize.Clone()
-		result.x = textureSize.x + textureSize.Width
-		result.Width = notificationSize.Width - textureSize.Width
+		const padding = 10
+		result.x = textureSize.x + textureSize.Width + padding
+		result.Width = notificationSize.Width - textureSize.Width - padding
+		result.y = notificationSize.y + notificationSize.Height / 2 - 8
 		return result
 	}
 }
