@@ -7,6 +7,7 @@ import {
 	RendererSDK
 } from "github.com/octarine-public/wrapper/index"
 
+// TODO: rework design
 export class GameNotification extends Notification {
 	private readonly image: string
 	private readonly text: string
