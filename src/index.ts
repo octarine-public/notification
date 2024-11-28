@@ -7,6 +7,7 @@ import {
 	ImageData,
 	Item,
 	item_smoke_of_deceit,
+	LocalPlayer,
 	NotificationsSDK,
 	Unit
 } from "github.com/octarine-public/wrapper/index"
@@ -34,9 +35,11 @@ new (class CNotifications {
 	}
 
 	private readonly heroesData: IHeroesItems[] = []
+	private enemyScanCharges: number = 0
+	private lastTime = -1
 
 	constructor() {
-		EventsSDK.on("PostDataUpdate", this.OnTick.bind(this))
+		EventsSDK.on("Tick", this.Tick.bind(this))
 		EventsSDK.on("UnitItemsChanged", this.UnitItemsChanged.bind(this))
 	}
 
@@ -69,7 +72,7 @@ new (class CNotifications {
 
 			const smokeBought = items.some(item => item instanceof item_smoke_of_deceit)
 
-			if (smokeBought && !hasSmoke) {
+			if (smokeBought && !hasSmoke && this.menu.scanState.value) {
 				this.SendNotif(
 					"soundboard.ay_ay_ay_cn",
 					ImageData.GetItemTexture("item_smoke_of_deceit"),
@@ -79,11 +82,10 @@ new (class CNotifications {
 				)
 			}
 		}
-
-		console.log(this.heroesData)
 	}
 
-	protected OnTick(dt: number) {
+	// TODO: cleanup & refactor
+	protected Tick(dt: number) {
 		if (
 			dt === 0 ||
 			!this.menu.runeState.value ||
@@ -91,6 +93,56 @@ new (class CNotifications {
 			!GameRules
 		) {
 			return
+		}
+
+		if (this.menu.scanState.value) {
+			const isRadiant = LocalPlayer?.Team === 2
+			const enemyScanCooldown = isRadiant
+				? GameRules.ScanCooldownDire
+				: GameRules.ScanCooldownRadiant
+
+			const enemyScanCharges = isRadiant
+				? GameRules.ScanChargesDire
+				: GameRules.ScanChargesRadiant
+
+			console.log(
+				enemyScanCooldown,
+				this.lastTime,
+				enemyScanCharges,
+				this.enemyScanCharges
+			)
+
+			if (
+				this.lastTime === -1 ||
+				(this.lastTime === 0 &&
+					enemyScanCharges === 0 &&
+					this.enemyScanCharges === 0)
+			) {
+				this.lastTime = enemyScanCooldown
+				return
+			}
+
+			if (
+				enemyScanCooldown - this.lastTime > 200 ||
+				(this.lastTime - enemyScanCooldown === this.lastTime &&
+					this.lastTime !== 0)
+			) {
+				this.enemyScanCharges++
+				this.lastTime = 0
+			}
+
+			if (this.isScanChargeUsed(enemyScanCharges)) {
+				console.log("test -----------------------------------")
+				this.SendNotif(
+					"soundboard.ay_ay_ay_cn",
+					ImageData.Paths.Icons.icon_scan,
+					"Enemy",
+					"buy",
+					true
+				)
+			}
+
+			this.lastTime = enemyScanCooldown
 		}
 
 		const currentTime = GameRules.GameTime
@@ -134,6 +186,7 @@ new (class CNotifications {
 		}
 	}
 
+	// TODO: rework kd system
 	protected SendNotif(
 		sound: string,
 		image: string,
@@ -182,5 +235,13 @@ new (class CNotifications {
 					DOTAScriptInventorySlot.DOTA_ITEM_NEUTRAL_SLOT
 				)
 			)
+	}
+
+	private isScanChargeUsed(charge: number): boolean {
+		if (this.enemyScanCharges > charge) {
+			this.enemyScanCharges = charge
+			return true
+		}
+		return false
 	}
 })()

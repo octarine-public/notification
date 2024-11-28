@@ -14,7 +14,8 @@ export class MenuManager {
 	public readonly runeState: Menu.Toggle
 	public readonly runeRemindState: Menu.Toggle
 
-	private smokeState: Menu.Toggle
+	public smokeState: Menu.Toggle
+	public scanState: Menu.Toggle
 
 	constructor() {
 		this.State = this.tree.AddToggle("State")
@@ -24,5 +25,6 @@ export class MenuManager {
 		this.runeRemindState = this.runeTree.AddToggle("Remind")
 
 		this.smokeState = this.tree.AddToggle("Smokes")
+		this.scanState = this.tree.AddToggle("Scans")
 	}
 }
