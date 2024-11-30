@@ -35,8 +35,9 @@ new (class CNotifications {
 	}
 
 	private readonly heroesData: IHeroesItems[] = []
-	private enemyScanCharges: number = 0
-	private lastTime = -1
+	private enemyScanCharges = 0
+	private lastTime = 0
+	private enemyGlyphCooldown = 0
 
 	constructor() {
 		EventsSDK.on("Tick", this.Tick.bind(this))
@@ -96,53 +97,21 @@ new (class CNotifications {
 		}
 
 		if (this.menu.scanState.value) {
-			const isRadiant = LocalPlayer?.Team === 2
-			const enemyScanCooldown = isRadiant
-				? GameRules.ScanCooldownDire
-				: GameRules.ScanCooldownRadiant
-
-			const enemyScanCharges = isRadiant
-				? GameRules.ScanChargesDire
-				: GameRules.ScanChargesRadiant
-
-			console.log(
-				enemyScanCooldown,
-				this.lastTime,
-				enemyScanCharges,
-				this.enemyScanCharges
+			this.SendScanNotif(
+				"soundboard.ay_ay_ay_cn",
+				ImageData.Paths.Icons.icon_scan,
+				"Enemy",
+				"buy"
 			)
+		}
 
-			if (
-				this.lastTime === -1 ||
-				(this.lastTime === 0 &&
-					enemyScanCharges === 0 &&
-					this.enemyScanCharges === 0)
-			) {
-				this.lastTime = enemyScanCooldown
-				return
-			}
-
-			if (
-				enemyScanCooldown - this.lastTime > 200 ||
-				(this.lastTime - enemyScanCooldown === this.lastTime &&
-					this.lastTime !== 0)
-			) {
-				this.enemyScanCharges++
-				this.lastTime = 0
-			}
-
-			if (this.isScanChargeUsed(enemyScanCharges)) {
-				console.log("test -----------------------------------")
-				this.SendNotif(
-					"soundboard.ay_ay_ay_cn",
-					ImageData.Paths.Icons.icon_scan,
-					"Enemy",
-					"buy",
-					true
-				)
-			}
-
-			this.lastTime = enemyScanCooldown
+		if (this.menu.glyphState.value) {
+			this.SendGlyphNotif(
+				"soundboard.ay_ay_ay_cn",
+				ImageData.Paths.Icons.icon_glyph_on,
+				"Enemy",
+				"buy"
+			)
 		}
 
 		const currentTime = GameRules.GameTime
@@ -167,8 +136,7 @@ new (class CNotifications {
 					"soundboard.ay_ay_ay_cn",
 					ImageData.GetRuneTexture(texture),
 					"spawned",
-					type,
-					true
+					type
 				)
 			} else if (
 				remainingTime > 20 &&
@@ -179,8 +147,7 @@ new (class CNotifications {
 					"soundboard.ay_ay_ay_cn",
 					ImageData.GetRuneTexture(texture),
 					"20 second!",
-					type,
-					true
+					type
 				)
 			}
 		}
@@ -192,7 +159,7 @@ new (class CNotifications {
 		image: string,
 		text: string,
 		type: "active" | "bounty" | "xp" | "buy",
-		checkCooldown: boolean
+		checkCooldown: boolean = true
 	) {
 		if (checkCooldown && type !== "buy" && this.cooldowns[type] !== 0) {
 			return
@@ -201,6 +168,70 @@ new (class CNotifications {
 		if (type !== "buy") {
 			this.cooldowns[type as "active" | "bounty" | "xp"] = GameRules?.GameTime ?? 0
 		}
+	}
+
+	protected SendGlyphNotif(
+		sound: string,
+		image: string,
+		text: string,
+		type: "active" | "bounty" | "xp" | "buy"
+	) {
+		if (GameRules === undefined) {
+			return
+		}
+
+		const isRadiant = LocalPlayer?.Team === 2
+
+		const enemyGlyphCooldown = isRadiant
+			? GameRules.GlyphCooldownDire
+			: GameRules.GlyphCooldownRadiant
+
+		if (this.isGlyphCooldowned(enemyGlyphCooldown)) {
+			this.SendNotif(sound, image, text, type)
+		}
+
+		this.enemyGlyphCooldown = enemyGlyphCooldown
+	}
+
+	protected SendScanNotif(
+		sound: string,
+		image: string,
+		text: string,
+		type: "active" | "bounty" | "xp" | "buy"
+	) {
+		if (GameRules === undefined) {
+			return
+		}
+		const isRadiant = LocalPlayer?.Team === 2
+		const enemyScanCooldown = isRadiant
+			? GameRules.ScanCooldownDire
+			: GameRules.ScanCooldownRadiant
+
+		const enemyScanCharges = isRadiant
+			? GameRules.ScanChargesDire
+			: GameRules.ScanChargesRadiant
+
+		if (
+			this.lastTime === 0 &&
+			enemyScanCharges === 0 &&
+			this.enemyScanCharges === 0
+		) {
+			return
+		}
+
+		if (
+			enemyScanCooldown - this.lastTime > 200 ||
+			(this.lastTime - enemyScanCooldown === this.lastTime && this.lastTime !== 0)
+		) {
+			this.enemyScanCharges++
+			this.lastTime = 0
+		}
+
+		if (this.isScanChargeUsed(enemyScanCharges)) {
+			this.SendNotif(sound, image, text, type)
+		}
+
+		this.lastTime = enemyScanCooldown
 	}
 
 	// TODO: disable in custom games & rework in other games modes (ex. solo mid 1 vs 1, etc.)
@@ -240,6 +271,14 @@ new (class CNotifications {
 	private isScanChargeUsed(charge: number): boolean {
 		if (this.enemyScanCharges > charge) {
 			this.enemyScanCharges = charge
+			return true
+		}
+		return false
+	}
+
+	private isGlyphCooldowned(glyphCooldown: number): boolean {
+		if (glyphCooldown < this.enemyGlyphCooldown && glyphCooldown === 0) {
+			this.enemyGlyphCooldown = glyphCooldown
 			return true
 		}
 		return false

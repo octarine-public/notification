@@ -17,6 +17,9 @@ export class MenuManager {
 	public smokeState: Menu.Toggle
 	public scanState: Menu.Toggle
 
+	public glyphTree: Menu.Node
+	public glyphState: Menu.Toggle
+
 	constructor() {
 		this.State = this.tree.AddToggle("State")
 
@@ -26,5 +29,8 @@ export class MenuManager {
 
 		this.smokeState = this.tree.AddToggle("Smokes")
 		this.scanState = this.tree.AddToggle("Scans")
+
+		this.glyphTree = this.tree.AddNode("glyph notification")
+		this.glyphState = this.tree.AddToggle("glyph")
 	}
 }
