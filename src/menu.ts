@@ -14,7 +14,6 @@ export class MenuManager {
 	public readonly runeState: Menu.Toggle
 	public readonly runeRemindState: Menu.Toggle
 
-	public readonly smokeState: Menu.Toggle
 	public readonly scanState: Menu.Toggle
 
 	public readonly glyphState: Menu.Toggle
@@ -30,8 +29,26 @@ export class MenuManager {
 		"item_cheese"
 	]
 
+	private readonly spells: string[] = [
+		"enigma_black_hole",
+		"faceless_void_chronosphere",
+		"invoker_sun_strike",
+		"disruptor_static_storm",
+		"earthshaker_echo_slam",
+		"sandking_epicenter",
+		"terrorblade_metamorphosis",
+		"magnataur_reverse_polarity",
+		"abaddon_borrowed_time",
+		"bane_fiends_grip",
+		"beastmaster_primal_roar",
+		"batrider_flaming_lasso",
+		"centaur_stampede",
+		"death_prophet_exorcism"
+	]
+
 	public readonly notifCostRange: Menu.Slider
 	public readonly itemsState: Menu.ImageSelector
+	public readonly spellsState: Menu.ImageSelector
 
 	constructor() {
 		this.State = this.tree.AddToggle("State")
@@ -40,7 +57,6 @@ export class MenuManager {
 		this.runeState = this.runeTree.AddToggle("State")
 		this.runeRemindState = this.runeTree.AddToggle("Remind")
 
-		this.smokeState = this.tree.AddToggle("Smokes")
 		this.scanState = this.tree.AddToggle("Scans")
 
 		this.glyphState = this.tree.AddToggle("glyph")
@@ -58,6 +74,12 @@ export class MenuManager {
 			"Items",
 			this.items,
 			new Map(this.items.map(item => [item, true]))
+		)
+
+		this.spellsState = this.tree.AddImageSelector(
+			"Spells",
+			this.spells,
+			new Map(this.items.map(spell => [spell, true]))
 		)
 	}
 }

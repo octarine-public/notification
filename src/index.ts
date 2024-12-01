@@ -1,4 +1,5 @@
 import {
+	Ability,
 	DOTAGameMode,
 	DOTAScriptInventorySlot,
 	EventsSDK,
@@ -41,6 +42,35 @@ new (class CNotifications {
 	constructor() {
 		EventsSDK.on("Tick", this.Tick.bind(this))
 		EventsSDK.on("UnitItemsChanged", this.UnitItemsChanged.bind(this))
+		EventsSDK.on("AbilityCooldownChanged", this.AbilityCooldownChanged.bind(this))
+	}
+
+	protected AbilityCooldownChanged(ability: Ability) {
+		if (
+			!(ability.OwnerEntity instanceof Hero) ||
+			ability.CooldownChangeTime === 0 ||
+			!this.menu.spellsState.IsEnabled(ability.Name)
+		) {
+			return
+		}
+
+		if (ability.CooldownPercent === 100) {
+			this.SendNotif(
+				"soundboard.ay_ay_ay_cn",
+				ImageData.GetSpellTexture(ability.Name),
+				"used",
+				"buy"
+			)
+		}
+
+		if (ability.CooldownPercent === 0) {
+			this.SendNotif(
+				"soundboard.ay_ay_ay_cn",
+				ImageData.GetSpellTexture(ability.Name),
+				"",
+				"buy"
+			)
+		}
 	}
 
 	protected UnitItemsChanged(unit: Unit) {
@@ -96,12 +126,7 @@ new (class CNotifications {
 
 	// TODO: cleanup & refactor
 	protected Tick(dt: number) {
-		if (
-			dt === 0 ||
-			!this.menu.runeState.value ||
-			!this.menu.State.value ||
-			!GameRules
-		) {
+		if (dt === 0 || !this.menu.State.value || !GameRules) {
 			return
 		}
 
@@ -123,41 +148,46 @@ new (class CNotifications {
 			)
 		}
 
-		const currentTime = GameRules.GameTime
-		Object.keys(this.cooldowns).forEach(key => {
-			const type = key as "active" | "bounty" | "xp"
-			if (this.cooldowns[type] !== 0 && currentTime - this.cooldowns[type] > 2) {
-				this.cooldowns[type] = 0
+		if (this.menu.runeState.value) {
+			const currentTime = GameRules.GameTime
+			Object.keys(this.cooldowns).forEach(key => {
+				const type = key as "active" | "bounty" | "xp"
+				if (
+					this.cooldowns[type] !== 0 &&
+					currentTime - this.cooldowns[type] > 2
+				) {
+					this.cooldowns[type] = 0
+				}
+			})
+
+			const textureMap: Record<"active" | "bounty" | "xp", string> = {
+				active: "regen",
+				bounty: "bounty",
+				xp: "xp"
 			}
-		})
 
-		const textureMap: Record<"active" | "bounty" | "xp", string> = {
-			active: "regen",
-			bounty: "bounty",
-			xp: "xp"
-		}
-
-		for (const type of ["active", "bounty", "xp"] as const) {
-			const remainingTime = this.getRemainingTime(this.getSpawnTime(type))
-			const texture = textureMap[type]
-			if (remainingTime > 0 && remainingTime < 0.1) {
-				this.SendNotif(
-					"soundboard.ay_ay_ay_cn",
-					ImageData.GetRuneTexture(texture),
-					"spawned",
-					type
-				)
-			} else if (
-				remainingTime > 20 &&
-				remainingTime < 20.1 &&
-				this.menu.runeRemindState.value
-			) {
-				this.SendNotif(
-					"soundboard.ay_ay_ay_cn",
-					ImageData.GetRuneTexture(texture),
-					"20 second!",
-					type
-				)
+			for (const type of ["active", "bounty", "xp"] as const) {
+				const remainingTime = this.getRemainingTime(this.getSpawnTime(type))
+				const texture = textureMap[type]
+				if (remainingTime > 0 && remainingTime < 0.1) {
+					this.SendNotif(
+						"soundboard.ay_ay_ay_cn",
+						ImageData.GetRuneTexture(texture),
+						"spawned",
+						type
+					)
+				} else if (
+					remainingTime > 20 &&
+					remainingTime < 20.1 &&
+					this.menu.runeRemindState.value
+				) {
+					this.SendNotif(
+						"soundboard.ay_ay_ay_cn",
+						ImageData.GetRuneTexture(texture),
+						"20 second!",
+						type
+					)
+				}
 			}
 		}
 	}
