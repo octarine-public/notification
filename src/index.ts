@@ -6,7 +6,6 @@ import {
 	Hero,
 	ImageData,
 	Item,
-	item_smoke_of_deceit,
 	LocalPlayer,
 	NotificationsSDK,
 	Unit
@@ -60,27 +59,37 @@ new (class CNotifications {
 		if (!unitInArray) {
 			this.heroesData.push(heroItems)
 		} else {
-			let hasSmoke = false
 			for (let i = 0; i < this.heroesData.length; i++) {
 				if (this.heroesData[i].unit === unit) {
-					hasSmoke = this.heroesData[i].items.some(
-						item => item instanceof item_smoke_of_deceit
+					const pastItems = this.heroesData[i].items
+					const presentItems = items
+
+					const newItems = presentItems.filter(
+						item =>
+							!pastItems.some(
+								existingItem => existingItem.Name === item.Name
+							)
 					)
+
+					if (newItems.length > 0) {
+						newItems.forEach(newItem => {
+							if (
+								this.menu.itemsState.IsEnabled(newItem.Name) ||
+								newItem.AbilityData.Cost >= this.menu.notifCostRange.value
+							) {
+								this.SendNotif(
+									"soundboard.ay_ay_ay_cn",
+									ImageData.GetItemTexture(newItem.Name),
+									"bought",
+									"buy",
+									false
+								)
+							}
+						})
+					}
 
 					this.heroesData[i].items = items
 				}
-			}
-
-			const smokeBought = items.some(item => item instanceof item_smoke_of_deceit)
-
-			if (smokeBought && !hasSmoke && this.menu.scanState.value) {
-				this.SendNotif(
-					"soundboard.ay_ay_ay_cn",
-					ImageData.GetItemTexture("item_smoke_of_deceit"),
-					"bought",
-					"buy",
-					false
-				)
 			}
 		}
 	}
