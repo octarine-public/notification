@@ -2,12 +2,14 @@ import {
 	Ability,
 	DOTAGameMode,
 	DOTAScriptInventorySlot,
+	Entity,
 	EventsSDK,
 	GameRules,
 	Hero,
 	ImageData,
 	Item,
 	LocalPlayer,
+	Miniboss,
 	NotificationsSDK,
 	Unit
 } from "github.com/octarine-public/wrapper/index"
@@ -28,21 +30,53 @@ new (class CNotifications {
 		xp: 0
 	}
 
-	private readonly spawnTimes: Record<"active" | "bounty" | "xp", number> = {
+	private readonly spawnTimes: Record<
+		"active" | "bounty" | "xp" | "tormentor",
+		number
+	> = {
 		active: 120,
 		bounty: 180,
-		xp: 420
+		xp: 420,
+		tormentor: 1200
 	}
 
 	private readonly heroesData: IHeroesItems[] = []
 	private enemyScanCharges = 0
-	private lastTime = 0
+	private lastScanCooldown = 0
 	private enemyGlyphCooldown = 0
+	private tormentorStatus = 0
+	private nextTormentorSpawnTime = 1200
 
 	constructor() {
 		EventsSDK.on("Tick", this.Tick.bind(this))
 		EventsSDK.on("UnitItemsChanged", this.UnitItemsChanged.bind(this))
 		EventsSDK.on("AbilityCooldownChanged", this.AbilityCooldownChanged.bind(this))
+		EventsSDK.on("EntityCreated", this.OnEntityCreated.bind(this))
+		EventsSDK.on("EntityDestroyed", this.OnEntityDestroyed.bind(this))
+		EventsSDK.on("GameStarted", this.GameStarted.bind(this))
+	}
+
+	protected GameStarted() {
+		if (GameRules === undefined || LocalPlayer === undefined) {
+			return
+		}
+		const isRadiant = LocalPlayer?.Team === 2
+		this.enemyScanCharges = isRadiant
+			? GameRules.ScanChargesDire
+			: GameRules.ScanChargesRadiant
+	}
+
+	protected OnEntityDestroyed(entity: Entity) {
+		if (entity instanceof Miniboss) {
+			this.tormentorStatus = 0
+			this.nextTormentorSpawnTime = (GameRules?.GameTime ?? 0) + 1200
+		}
+	}
+
+	protected OnEntityCreated(entity: Entity) {
+		if (entity instanceof Miniboss) {
+			this.tormentorStatus = 1
+		}
 	}
 
 	protected AbilityCooldownChanged(ability: Ability) {
@@ -128,6 +162,20 @@ new (class CNotifications {
 	protected Tick(dt: number) {
 		if (dt === 0 || !this.menu.State.value || !GameRules) {
 			return
+		}
+
+		const remainingTormentor = this.getTormentorRemainingTime(
+			this.nextTormentorSpawnTime
+		)
+
+		if (this.tormentorStatus === 0 && remainingTormentor === 0) {
+			this.tormentorStatus = 1
+			this.SendNotif(
+				"soundboard.ay_ay_ay_cn",
+				ImageData.Paths.Icons.buff_outline,
+				"tormentor",
+				"buy"
+			)
 		}
 
 		if (this.menu.scanState.value) {
@@ -251,7 +299,7 @@ new (class CNotifications {
 			: GameRules.ScanChargesRadiant
 
 		if (
-			this.lastTime === 0 &&
+			this.lastScanCooldown === 0 &&
 			enemyScanCharges === 0 &&
 			this.enemyScanCharges === 0
 		) {
@@ -259,22 +307,23 @@ new (class CNotifications {
 		}
 
 		if (
-			enemyScanCooldown - this.lastTime > 200 ||
-			(this.lastTime - enemyScanCooldown === this.lastTime && this.lastTime !== 0)
+			enemyScanCooldown - this.lastScanCooldown > 200 ||
+			(this.lastScanCooldown - enemyScanCooldown === this.lastScanCooldown &&
+				this.lastScanCooldown !== 0)
 		) {
 			this.enemyScanCharges++
-			this.lastTime = 0
+			this.lastScanCooldown = 0
 		}
 
 		if (this.isScanChargeUsed(enemyScanCharges)) {
 			this.SendNotif(sound, image, text, type)
 		}
 
-		this.lastTime = enemyScanCooldown
+		this.lastScanCooldown = enemyScanCooldown
 	}
 
 	// TODO: disable in custom games & rework in other games modes (ex. solo mid 1 vs 1, etc.)
-	private getSpawnTime(type: "active" | "bounty" | "xp"): number {
+	private getSpawnTime(type: "active" | "bounty" | "xp" | "tormentor"): number {
 		const spawn = this.spawnTimes[type]
 		return GameRules?.GameMode === DOTAGameMode.DOTA_GAMEMODE_TURBO
 			? spawn / 2
@@ -287,6 +336,10 @@ new (class CNotifications {
 
 	private getRemainingTime(spawnTime: number): number {
 		return Math.max(0, spawnTime - this.getModuleTime(spawnTime))
+	}
+
+	private getTormentorRemainingTime(spawnTime: number): number {
+		return Math.max(0, spawnTime - (GameRules?.GameTime ?? 0))
 	}
 
 	private getItems(unit: Nullable<Unit>): Item[] {
