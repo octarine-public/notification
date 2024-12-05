@@ -77,6 +77,14 @@ new (class CNotifications {
 		if (entity instanceof Miniboss) {
 			this.tormentorStatus = 1
 		}
+
+		if (entity instanceof Hero) {
+			this.SendNotif(
+				"compendium_levelup.vsnd_c",
+				[{ image: ImageData.GetRuneTexture("regen") }, { text: "spawned" }],
+				"buy"
+			)
+		}
 	}
 
 	protected AbilityCooldownChanged(ability: Ability) {
@@ -90,18 +98,28 @@ new (class CNotifications {
 
 		if (ability.CooldownPercent === 100) {
 			this.SendNotif(
-				"soundboard.ay_ay_ay_cn",
-				ImageData.GetSpellTexture(ability.Name),
-				"used",
+				"compendium_levelup.vsnd_c",
+				[
+					{
+						image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
+					},
+					{ image: ImageData.Paths.Icons.hardsupport },
+					{ image: ImageData.GetSpellTexture(ability.Name) }
+				],
 				"buy"
 			)
 		}
 
 		if (ability.CooldownPercent === 0) {
 			this.SendNotif(
-				"soundboard.ay_ay_ay_cn",
-				ImageData.GetSpellTexture(ability.Name),
-				"",
+				"compendium_levelup.vsnd_c",
+				[
+					{
+						image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
+					},
+					{ image: ImageData.Paths.Icons.icon_timer },
+					{ image: ImageData.GetSpellTexture(ability.Name) }
+				],
 				"buy"
 			)
 		}
@@ -142,9 +160,17 @@ new (class CNotifications {
 								newItem.AbilityData.Cost >= this.menu.notifCostRange.value
 							) {
 								this.SendNotif(
-									"soundboard.ay_ay_ay_cn",
-									ImageData.GetItemTexture(newItem.Name),
-									"bought",
+									"compendium_levelup.vsnd_c",
+									[
+										{
+											image: ImageData.GetHeroTexture(
+												unit.Name,
+												false
+											)
+										},
+										{ image: ImageData.Paths.Icons.gold_large },
+										{ image: ImageData.GetItemTexture(newItem.Name) }
+									],
 									"buy",
 									false
 								)
@@ -172,8 +198,7 @@ new (class CNotifications {
 			this.tormentorStatus = 1
 			this.SendNotif(
 				"soundboard.ay_ay_ay_cn",
-				ImageData.Paths.Icons.buff_outline,
-				"tormentor",
+				[{ image: ImageData.Paths.Icons.chat_arrow_grow }, { text: "tormentor" }],
 				"buy"
 			)
 		}
@@ -181,8 +206,11 @@ new (class CNotifications {
 		if (this.menu.scanState.value) {
 			this.SendScanNotif(
 				"soundboard.ay_ay_ay_cn",
-				ImageData.Paths.Icons.icon_scan,
-				"Enemy",
+				[
+					{ image: ImageData.Paths.Icons.courier_dire },
+					{ image: ImageData.Paths.Icons.hardsupport },
+					{ image: ImageData.Paths.Icons.icon_scan }
+				],
 				"buy"
 			)
 		}
@@ -190,8 +218,11 @@ new (class CNotifications {
 		if (this.menu.glyphState.value) {
 			this.SendGlyphNotif(
 				"soundboard.ay_ay_ay_cn",
-				ImageData.Paths.Icons.icon_glyph_on,
-				"Enemy",
+				[
+					{ image: ImageData.Paths.Icons.courier_dire },
+					{ image: ImageData.Paths.Icons.icon_timer },
+					{ image: ImageData.Paths.Icons.icon_glyph_on }
+				],
 				"buy"
 			)
 		}
@@ -220,8 +251,10 @@ new (class CNotifications {
 				if (remainingTime > 0 && remainingTime < 0.1) {
 					this.SendNotif(
 						"soundboard.ay_ay_ay_cn",
-						ImageData.GetRuneTexture(texture),
-						"spawned",
+						[
+							{ image: ImageData.GetRuneTexture(texture) },
+							{ text: "spawned" }
+						],
 						type
 					)
 				} else if (
@@ -231,8 +264,10 @@ new (class CNotifications {
 				) {
 					this.SendNotif(
 						"soundboard.ay_ay_ay_cn",
-						ImageData.GetRuneTexture(texture),
-						"20 second!",
+						[
+							{ image: ImageData.GetRuneTexture(texture) },
+							{ text: "20 sec!" }
+						],
 						type
 					)
 				}
@@ -240,18 +275,16 @@ new (class CNotifications {
 		}
 	}
 
-	// TODO: rework kd system
 	protected SendNotif(
 		sound: string,
-		image: string,
-		text: string,
+		components: { image?: string; text?: string }[],
 		type: "active" | "bounty" | "xp" | "buy",
 		checkCooldown: boolean = true
 	) {
 		if (checkCooldown && type !== "buy" && this.cooldowns[type] !== 0) {
 			return
 		}
-		NotificationsSDK.Push(new GameNotification(sound, image, text))
+		NotificationsSDK.Push(new GameNotification(sound, components))
 		if (type !== "buy") {
 			this.cooldowns[type as "active" | "bounty" | "xp"] = GameRules?.GameTime ?? 0
 		}
@@ -259,8 +292,7 @@ new (class CNotifications {
 
 	protected SendGlyphNotif(
 		sound: string,
-		image: string,
-		text: string,
+		components: { image?: string; text?: string }[],
 		type: "active" | "bounty" | "xp" | "buy"
 	) {
 		if (GameRules === undefined) {
@@ -274,7 +306,7 @@ new (class CNotifications {
 			: GameRules.GlyphCooldownRadiant
 
 		if (this.isGlyphCooldowned(enemyGlyphCooldown)) {
-			this.SendNotif(sound, image, text, type)
+			this.SendNotif(sound, components, type)
 		}
 
 		this.enemyGlyphCooldown = enemyGlyphCooldown
@@ -282,8 +314,7 @@ new (class CNotifications {
 
 	protected SendScanNotif(
 		sound: string,
-		image: string,
-		text: string,
+		components: { image?: string; text?: string }[],
 		type: "active" | "bounty" | "xp" | "buy"
 	) {
 		if (GameRules === undefined) {
@@ -316,7 +347,7 @@ new (class CNotifications {
 		}
 
 		if (this.isScanChargeUsed(enemyScanCharges)) {
-			this.SendNotif(sound, image, text, type)
+			this.SendNotif(sound, components, type)
 		}
 
 		this.lastScanCooldown = enemyScanCooldown
