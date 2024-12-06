@@ -9,9 +9,14 @@ import {
 
 export class GameNotification extends Notification {
 	private readonly components: { image?: string; text?: string }[]
+	private readonly minWidth = 175
+	private readonly maxWidth = 350
+	private readonly minFontSize = 18
+	private readonly maxFontSize = 38
+	private readonly scaleFactor = 0.8
 
 	constructor(playSoundName: string, components: { image?: string; text?: string }[]) {
-		super({ playSoundName, timeToShow: 5 * 1000 })
+		super({ playSoundName, timeToShow: 5000 })
 		this.components = components
 	}
 
@@ -75,9 +80,8 @@ export class GameNotification extends Notification {
 
 	private getComponentSize(notifSize: Rectangle): Rectangle {
 		const result = notifSize.Clone()
-		const scaleFactor = 0.8
-		result.Width = (notifSize.Width / 4) * scaleFactor
-		result.Height = notifSize.Height * scaleFactor
+		result.Width = (notifSize.Width / 4) * this.scaleFactor
+		result.Height = notifSize.Height * this.scaleFactor
 		return result
 	}
 
@@ -103,20 +107,19 @@ export class GameNotification extends Notification {
 	}
 
 	private getFontSize(componentSize: Rectangle): number {
-		const minWidth = 175
-		const maxWidth = 350
-		const minFontSize = 22
-		const maxFontSize = 42
-
-		if (componentSize.Width <= minWidth) {
-			return minFontSize
+		if (componentSize.Width <= this.minWidth) {
+			return this.minFontSize
 		}
 
-		if (componentSize.Width >= maxWidth) {
-			return maxFontSize
+		if (componentSize.Width >= this.maxWidth) {
+			return this.maxFontSize
 		}
 
-		const scale = (componentSize.Width - minWidth) / (maxWidth - minWidth)
-		return Math.round(minFontSize + scale * (maxFontSize - minFontSize))
+		const scale =
+			(componentSize.Width - this.minWidth) / (this.maxWidth - this.minWidth)
+
+		return Math.round(
+			this.minFontSize + scale * (this.maxFontSize - this.minFontSize)
+		)
 	}
 }

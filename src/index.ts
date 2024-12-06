@@ -44,8 +44,8 @@ new (class CNotifications {
 	private enemyScanCharges = 0
 	private lastScanCooldown = 0
 	private enemyGlyphCooldown = 0
-	private tormentorStatus = 0
 	private nextTormentorSpawnTime = 1200
+	private isTormentorAlive = false
 
 	constructor() {
 		EventsSDK.on("Tick", this.Tick.bind(this))
@@ -60,7 +60,7 @@ new (class CNotifications {
 		if (GameRules === undefined || LocalPlayer === undefined) {
 			return
 		}
-		const isRadiant = LocalPlayer?.Team === 2
+		const isRadiant = LocalPlayer.Team === 2
 		this.enemyScanCharges = isRadiant
 			? GameRules.ScanChargesDire
 			: GameRules.ScanChargesRadiant
@@ -68,22 +68,14 @@ new (class CNotifications {
 
 	protected OnEntityDestroyed(entity: Entity) {
 		if (entity instanceof Miniboss) {
-			this.tormentorStatus = 0
+			this.isTormentorAlive = false
 			this.nextTormentorSpawnTime = (GameRules?.GameTime ?? 0) + 1200
 		}
 	}
 
 	protected OnEntityCreated(entity: Entity) {
 		if (entity instanceof Miniboss) {
-			this.tormentorStatus = 1
-		}
-
-		if (entity instanceof Hero) {
-			this.SendNotif(
-				"compendium_levelup.vsnd_c",
-				[{ image: ImageData.GetRuneTexture("regen") }, { text: "spawned" }],
-				"buy"
-			)
+			this.isTormentorAlive = true
 		}
 	}
 
@@ -91,14 +83,15 @@ new (class CNotifications {
 		if (
 			!(ability.OwnerEntity instanceof Hero) ||
 			ability.CooldownChangeTime === 0 ||
-			!this.menu.spellsState.IsEnabled(ability.Name)
+			!this.menu.State.value ||
+			!this.menu.spellsState.IsEnabled(ability.Name) ||
+			!ability.OwnerEntity.IsEnemy()
 		) {
 			return
 		}
 
 		if (ability.CooldownPercent === 100) {
 			this.SendNotif(
-				"compendium_levelup.vsnd_c",
 				[
 					{
 						image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
@@ -106,13 +99,10 @@ new (class CNotifications {
 					{ image: ImageData.Paths.Icons.hardsupport },
 					{ image: ImageData.GetSpellTexture(ability.Name) }
 				],
-				"buy"
+				"other"
 			)
-		}
-
-		if (ability.CooldownPercent === 0) {
+		} else if (ability.CooldownPercent === 0) {
 			this.SendNotif(
-				"compendium_levelup.vsnd_c",
 				[
 					{
 						image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
@@ -120,110 +110,114 @@ new (class CNotifications {
 					{ image: ImageData.Paths.Icons.icon_timer },
 					{ image: ImageData.GetSpellTexture(ability.Name) }
 				],
-				"buy"
+				"other"
 			)
 		}
 	}
 
 	protected UnitItemsChanged(unit: Unit) {
-		if (!(unit instanceof Hero) || !unit.IsEnemy() || unit.IsIllusion) {
+		if (
+			!(unit instanceof Hero) ||
+			!unit.IsEnemy() ||
+			unit.IsIllusion ||
+			!this.menu.State.value
+		) {
 			return
 		}
 
 		const items = this.getItems(unit)
-		const heroItems: IHeroesItems = {
-			unit,
-			items
-		}
+		const heroItems = this.heroesData.find(heroData => heroData.unit === unit)
 
-		const unitInArray = this.heroesData.some(heroData => heroData.unit === unit)
-
-		if (!unitInArray) {
-			this.heroesData.push(heroItems)
+		if (!heroItems) {
+			this.heroesData.push({ unit, items })
 		} else {
-			for (let i = 0; i < this.heroesData.length; i++) {
-				if (this.heroesData[i].unit === unit) {
-					const pastItems = this.heroesData[i].items
-					const presentItems = items
+			const newItems = items.filter(
+				item =>
+					!heroItems.items.some(existingItem => existingItem.Name === item.Name)
+			)
 
-					const newItems = presentItems.filter(
-						item =>
-							!pastItems.some(
-								existingItem => existingItem.Name === item.Name
-							)
-					)
-
-					if (newItems.length > 0) {
-						newItems.forEach(newItem => {
-							if (
-								this.menu.itemsState.IsEnabled(newItem.Name) ||
-								newItem.AbilityData.Cost >= this.menu.notifCostRange.value
-							) {
-								this.SendNotif(
-									"compendium_levelup.vsnd_c",
-									[
-										{
-											image: ImageData.GetHeroTexture(
-												unit.Name,
-												false
-											)
-										},
-										{ image: ImageData.Paths.Icons.gold_large },
-										{ image: ImageData.GetItemTexture(newItem.Name) }
-									],
-									"buy",
-									false
-								)
-							}
-						})
+			if (newItems.length > 0) {
+				newItems.forEach(newItem => {
+					if (
+						this.menu.itemsState.IsEnabled(newItem.Name) ||
+						newItem.AbilityData.Cost >= this.menu.notifCostRange.value
+					) {
+						this.SendNotif(
+							[
+								{ image: ImageData.GetHeroTexture(unit.Name, false) },
+								{ image: ImageData.Paths.Icons.gold_large },
+								{ image: ImageData.GetItemTexture(newItem.Name) }
+							],
+							"other",
+							false
+						)
 					}
-
-					this.heroesData[i].items = items
-				}
+				})
 			}
+
+			heroItems.items = items
 		}
 	}
 
-	// TODO: cleanup & refactor
 	protected Tick(dt: number) {
-		if (dt === 0 || !this.menu.State.value || !GameRules) {
+		if (
+			dt === 0 ||
+			!this.menu.State.value ||
+			GameRules === undefined ||
+			LocalPlayer === undefined
+		) {
 			return
 		}
 
-		const remainingTormentor = this.getTormentorRemainingTime(
-			this.nextTormentorSpawnTime
-		)
+		const tormentorSpawned =
+			this.getTormentorRemainingTime(this.nextTormentorSpawnTime) === 0 &&
+			!this.isTormentorAlive
 
-		if (this.tormentorStatus === 0 && remainingTormentor === 0) {
-			this.tormentorStatus = 1
+		if (tormentorSpawned) {
+			this.isTormentorAlive = true
+			// TODO: find tormentor img
 			this.SendNotif(
-				"soundboard.ay_ay_ay_cn",
-				[{ image: ImageData.Paths.Icons.chat_arrow_grow }, { text: "tormentor" }],
-				"buy"
+				[
+					{ text: "tormentor" },
+					{ text: " " },
+					{ image: ImageData.Paths.Icons.arrow_gold_dif }
+				],
+				"other"
 			)
 		}
 
 		if (this.menu.scanState.value) {
-			this.SendScanNotif(
-				"soundboard.ay_ay_ay_cn",
+			const isRadiant = LocalPlayer.Team === 2
+
+			const towerIcon = isRadiant
+				? ImageData.Paths.Icons.tower_dire
+				: ImageData.Paths.Icons.tower_radiant
+
+			// TODO: fix
+			this.TrySendScanNotif(
 				[
-					{ image: ImageData.Paths.Icons.courier_dire },
+					{ image: towerIcon },
 					{ image: ImageData.Paths.Icons.hardsupport },
 					{ image: ImageData.Paths.Icons.icon_scan }
 				],
-				"buy"
+				"other"
 			)
 		}
 
 		if (this.menu.glyphState.value) {
-			this.SendGlyphNotif(
-				"soundboard.ay_ay_ay_cn",
+			const isRadiant = LocalPlayer.Team === 2
+
+			const towerIcon = isRadiant
+				? ImageData.Paths.Icons.tower_dire
+				: ImageData.Paths.Icons.tower_radiant
+
+			this.TrySendGlyphNotif(
 				[
-					{ image: ImageData.Paths.Icons.courier_dire },
+					{ image: towerIcon },
 					{ image: ImageData.Paths.Icons.icon_timer },
 					{ image: ImageData.Paths.Icons.icon_glyph_on }
 				],
-				"buy"
+				"other"
 			)
 		}
 
@@ -248,12 +242,12 @@ new (class CNotifications {
 			for (const type of ["active", "bounty", "xp"] as const) {
 				const remainingTime = this.getRemainingTime(this.getSpawnTime(type))
 				const texture = textureMap[type]
+
 				if (remainingTime > 0 && remainingTime < 0.1) {
 					this.SendNotif(
-						"soundboard.ay_ay_ay_cn",
 						[
 							{ image: ImageData.GetRuneTexture(texture) },
-							{ text: "spawned" }
+							{ image: ImageData.Paths.Icons.arrow_gold_dif }
 						],
 						type
 					)
@@ -263,10 +257,10 @@ new (class CNotifications {
 					this.menu.runeRemindState.value
 				) {
 					this.SendNotif(
-						"soundboard.ay_ay_ay_cn",
 						[
 							{ image: ImageData.GetRuneTexture(texture) },
-							{ text: "20 sec!" }
+							{ image: ImageData.Paths.Icons.icon_timer },
+							{ text: "20\nsec!" }
 						],
 						type
 					)
@@ -276,24 +270,23 @@ new (class CNotifications {
 	}
 
 	protected SendNotif(
-		sound: string,
 		components: { image?: string; text?: string }[],
-		type: "active" | "bounty" | "xp" | "buy",
-		checkCooldown: boolean = true
+		type: "active" | "bounty" | "xp" | "other",
+		checkCooldown: boolean = true,
+		sound: string = ""
 	) {
-		if (checkCooldown && type !== "buy" && this.cooldowns[type] !== 0) {
+		if (checkCooldown && type !== "other" && this.cooldowns[type] !== 0) {
 			return
 		}
 		NotificationsSDK.Push(new GameNotification(sound, components))
-		if (type !== "buy") {
+		if (type !== "other") {
 			this.cooldowns[type as "active" | "bounty" | "xp"] = GameRules?.GameTime ?? 0
 		}
 	}
 
-	protected SendGlyphNotif(
-		sound: string,
+	protected TrySendGlyphNotif(
 		components: { image?: string; text?: string }[],
-		type: "active" | "bounty" | "xp" | "buy"
+		type: "active" | "bounty" | "xp" | "other"
 	) {
 		if (GameRules === undefined) {
 			return
@@ -306,16 +299,15 @@ new (class CNotifications {
 			: GameRules.GlyphCooldownRadiant
 
 		if (this.isGlyphCooldowned(enemyGlyphCooldown)) {
-			this.SendNotif(sound, components, type)
+			this.SendNotif(components, type, false)
 		}
 
 		this.enemyGlyphCooldown = enemyGlyphCooldown
 	}
 
-	protected SendScanNotif(
-		sound: string,
+	protected TrySendScanNotif(
 		components: { image?: string; text?: string }[],
-		type: "active" | "bounty" | "xp" | "buy"
+		type: "active" | "bounty" | "xp" | "other"
 	) {
 		if (GameRules === undefined) {
 			return
@@ -347,15 +339,28 @@ new (class CNotifications {
 		}
 
 		if (this.isScanChargeUsed(enemyScanCharges)) {
-			this.SendNotif(sound, components, type)
+			this.SendNotif(components, type)
 		}
 
 		this.lastScanCooldown = enemyScanCooldown
 	}
 
-	// TODO: disable in custom games & rework in other games modes (ex. solo mid 1 vs 1, etc.)
 	private getSpawnTime(type: "active" | "bounty" | "xp" | "tormentor"): number {
 		const spawn = this.spawnTimes[type]
+		const bannedGamesModes = [
+			DOTAGameMode.DOTA_GAMEMODE_1V1MID,
+			DOTAGameMode.DOTA_GAMEMODE_CUSTOM,
+			DOTAGameMode.DOTA_GAMEMODE_EVENT,
+			DOTAGameMode.DOTA_GAMEMODE_NONE,
+			DOTAGameMode.DOTA_GAMEMODE_INTRO,
+			DOTAGameMode.DOTA_GAMEMODE_HW,
+			DOTAGameMode.DOTA_GAMEMODE_XMAS,
+			DOTAGameMode.DOTA_GAMEMODE_TUTORIAL,
+			DOTAGameMode.DOTA_GAMEMODE_FH
+		]
+		if (GameRules === undefined || bannedGamesModes.includes(GameRules.GameMode)) {
+			return -1
+		}
 		return GameRules?.GameMode === DOTAGameMode.DOTA_GAMEMODE_TURBO
 			? spawn / 2
 			: spawn
@@ -391,17 +396,17 @@ new (class CNotifications {
 			)
 	}
 
-	private isScanChargeUsed(charge: number): boolean {
-		if (this.enemyScanCharges > charge) {
-			this.enemyScanCharges = charge
+	private isScanChargeUsed(realcharges: number): boolean {
+		if (this.enemyScanCharges > realcharges) {
+			this.enemyScanCharges = realcharges
 			return true
 		}
 		return false
 	}
 
-	private isGlyphCooldowned(glyphCooldown: number): boolean {
-		if (glyphCooldown < this.enemyGlyphCooldown && glyphCooldown === 0) {
-			this.enemyGlyphCooldown = glyphCooldown
+	private isGlyphCooldowned(realGlyphCooldown: number): boolean {
+		if (realGlyphCooldown < this.enemyGlyphCooldown && realGlyphCooldown === 0) {
+			this.enemyGlyphCooldown = realGlyphCooldown
 			return true
 		}
 		return false
