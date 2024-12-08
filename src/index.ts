@@ -1,21 +1,28 @@
 import {
 	Ability,
-	DOTAGameMode,
 	DOTAScriptInventorySlot,
 	Entity,
 	EventsSDK,
+	ExecuteOrder,
 	GameRules,
 	Hero,
 	ImageData,
 	Item,
+	item_tpscroll,
 	LocalPlayer,
 	Miniboss,
+	Modifier,
 	NotificationsSDK,
+	RuneSpawnerBounty,
+	RuneSpawnerPowerup,
+	RuneSpawnerXP,
+	Tower,
 	Unit
 } from "github.com/octarine-public/wrapper/index"
 
 import { MenuManager } from "./menu"
 import { GameNotification } from "./notification"
+import { towerManager } from "./towerManager"
 
 interface IHeroesItems {
 	unit: Unit
@@ -24,58 +31,96 @@ interface IHeroesItems {
 
 new (class CNotifications {
 	private readonly menu = new MenuManager()
-	private cooldowns: Record<"active" | "bounty" | "xp", number> = {
-		active: 0,
-		bounty: 0,
-		xp: 0
-	}
+	private readonly towerManager = new towerManager()
 
-	private readonly spawnTimes: Record<
-		"active" | "bounty" | "xp" | "tormentor",
-		number
-	> = {
-		active: 120,
-		bounty: 180,
-		xp: 420,
-		tormentor: 1200
-	}
-
+	private runeSpawnerPowerup: Nullable<RuneSpawnerPowerup>
+	private runeSpawnerBounty: Nullable<RuneSpawnerBounty>
+	private runeSpawnerXp: Nullable<RuneSpawnerXP>
 	private readonly heroesData: IHeroesItems[] = []
-	private enemyScanCharges = 0
-	private lastScanCooldown = 0
+	private readonly modifierRadarName = "modifier_radar_thinker"
 	private enemyGlyphCooldown = 0
 	private nextTormentorSpawnTime = 1200
 	private isTormentorAlive = false
 
 	constructor() {
-		EventsSDK.on("Tick", this.Tick.bind(this))
+		EventsSDK.on("PostDataUpdate", this.PostDataUpdate.bind(this))
 		EventsSDK.on("UnitItemsChanged", this.UnitItemsChanged.bind(this))
 		EventsSDK.on("AbilityCooldownChanged", this.AbilityCooldownChanged.bind(this))
 		EventsSDK.on("EntityCreated", this.OnEntityCreated.bind(this))
 		EventsSDK.on("EntityDestroyed", this.OnEntityDestroyed.bind(this))
-		EventsSDK.on("GameStarted", this.GameStarted.bind(this))
+		EventsSDK.on("ModifierCreated", this.ModifierCreated.bind(this))
+		EventsSDK.on("PrepareUnitOrders", this.PrepareUnitOrders.bind(this))
 	}
 
-	protected GameStarted() {
-		if (GameRules === undefined || LocalPlayer === undefined) {
-			return
+	protected PrepareUnitOrders(order: ExecuteOrder) {
+		if (
+			order.IsPlayerInput &&
+			order.Issuers[0].IsEnemy() &&
+			order.Ability_ instanceof item_tpscroll &&
+			order.Ability_.OwnerEntity !== undefined
+		) {
+			const fullNpcName = this.towerManager.CoordsInTowerRange(order.Position)
+			if (fullNpcName === undefined) {
+				return
+			}
+			const parts = fullNpcName.split("_")
+			const towerData = [parts[2], "T" + parts[3].replace(/\D/g, ""), parts[4]] // [team, posName (ex.T2), lane]
+			if (towerData[2] === undefined) {
+				towerData[2] = "base"
+			}
+			this.SendNotif([
+				{
+					image: ImageData.GetHeroTexture(
+						order.Ability_.OwnerEntity.Name,
+						false
+					)
+				},
+				{ image: ImageData.GetSpellTexture(order.Ability_.Name) },
+				{ text: `${towerData[1]}\n${towerData[2]}` }
+			])
 		}
-		const isRadiant = LocalPlayer.Team === 2
-		this.enemyScanCharges = isRadiant
-			? GameRules.ScanChargesDire
-			: GameRules.ScanChargesRadiant
 	}
 
-	protected OnEntityDestroyed(entity: Entity) {
-		if (entity instanceof Miniboss) {
-			this.isTormentorAlive = false
-			this.nextTormentorSpawnTime = (GameRules?.GameTime ?? 0) + 1200
+	protected ModifierCreated(modifier: Modifier) {
+		if (
+			modifier.Name === this.modifierRadarName &&
+			modifier.Caster !== undefined &&
+			modifier.Caster.IsEnemy() &&
+			modifier.IsValid &&
+			this.menu.scanState.value
+		) {
+			this.SendNotif([
+				{ image: ImageData.GetHeroTexture(modifier.Caster.Name) },
+				{ image: ImageData.Paths.Icons.hardsupport },
+				{ image: ImageData.Paths.Icons.icon_scan }
+			])
 		}
 	}
 
 	protected OnEntityCreated(entity: Entity) {
 		if (entity instanceof Miniboss) {
 			this.isTormentorAlive = true
+		} else if (entity instanceof RuneSpawnerPowerup) {
+			this.runeSpawnerPowerup = entity
+		} else if (entity instanceof RuneSpawnerBounty) {
+			this.runeSpawnerBounty = entity
+		} else if (entity instanceof RuneSpawnerXP) {
+			this.runeSpawnerXp = entity
+		} else if (entity instanceof Tower) {
+			this.towerManager.Add(entity)
+		}
+	}
+
+	protected OnEntityDestroyed(entity: Entity) {
+		if (entity instanceof Miniboss) {
+			this.isTormentorAlive = false
+			this.nextTormentorSpawnTime = (GameRules?.GameTime ?? 0) + 1200
+		} else if (entity instanceof RuneSpawnerPowerup) {
+			this.runeSpawnerPowerup = undefined
+		} else if (entity instanceof RuneSpawnerBounty) {
+			this.runeSpawnerBounty = undefined
+		} else if (entity instanceof RuneSpawnerXP) {
+			this.runeSpawnerXp = undefined
 		}
 	}
 
@@ -91,27 +136,21 @@ new (class CNotifications {
 		}
 
 		if (ability.CooldownPercent === 100) {
-			this.SendNotif(
-				[
-					{
-						image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
-					},
-					{ image: ImageData.Paths.Icons.hardsupport },
-					{ image: ImageData.GetSpellTexture(ability.Name) }
-				],
-				"other"
-			)
-		} else if (ability.CooldownPercent === 0) {
-			this.SendNotif(
-				[
-					{
-						image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
-					},
-					{ image: ImageData.Paths.Icons.icon_timer },
-					{ image: ImageData.GetSpellTexture(ability.Name) }
-				],
-				"other"
-			)
+			this.SendNotif([
+				{
+					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
+				},
+				{ image: ImageData.Paths.Icons.hardsupport },
+				{ image: ImageData.GetSpellTexture(ability.Name) }
+			])
+		} else if (ability.CooldownPercent === 0 && !(ability instanceof item_tpscroll)) {
+			this.SendNotif([
+				{
+					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
+				},
+				{ image: ImageData.Paths.Icons.icon_timer },
+				{ image: ImageData.GetSpellTexture(ability.Name) }
+			])
 		}
 	}
 
@@ -142,15 +181,11 @@ new (class CNotifications {
 						this.menu.itemsState.IsEnabled(newItem.Name) ||
 						newItem.AbilityData.Cost >= this.menu.notifCostRange.value
 					) {
-						this.SendNotif(
-							[
-								{ image: ImageData.GetHeroTexture(unit.Name, false) },
-								{ image: ImageData.Paths.Icons.gold_large },
-								{ image: ImageData.GetItemTexture(newItem.Name) }
-							],
-							"other",
-							false
-						)
+						this.SendNotif([
+							{ image: ImageData.GetHeroTexture(unit.Name, false) },
+							{ image: ImageData.Paths.Icons.gold_large },
+							{ image: ImageData.GetItemTexture(newItem.Name) }
+						])
 					}
 				})
 			}
@@ -159,7 +194,7 @@ new (class CNotifications {
 		}
 	}
 
-	protected Tick(dt: number) {
+	protected PostDataUpdate(dt: number) {
 		if (
 			dt === 0 ||
 			!this.menu.State.value ||
@@ -186,24 +221,6 @@ new (class CNotifications {
 			)
 		}
 
-		if (this.menu.scanState.value) {
-			const isRadiant = LocalPlayer.Team === 2
-
-			const towerIcon = isRadiant
-				? ImageData.Paths.Icons.tower_dire
-				: ImageData.Paths.Icons.tower_radiant
-
-			// TODO: fix
-			this.TrySendScanNotif(
-				[
-					{ image: towerIcon },
-					{ image: ImageData.Paths.Icons.hardsupport },
-					{ image: ImageData.Paths.Icons.icon_scan }
-				],
-				"other"
-			)
-		}
-
 		if (this.menu.glyphState.value) {
 			const isRadiant = LocalPlayer.Team === 2
 
@@ -211,59 +228,44 @@ new (class CNotifications {
 				? ImageData.Paths.Icons.tower_dire
 				: ImageData.Paths.Icons.tower_radiant
 
-			this.TrySendGlyphNotif(
-				[
-					{ image: towerIcon },
-					{ image: ImageData.Paths.Icons.icon_timer },
-					{ image: ImageData.Paths.Icons.icon_glyph_on }
-				],
-				"other"
-			)
+			this.TrySendGlyphNotif([
+				{ image: towerIcon },
+				{ image: ImageData.Paths.Icons.icon_timer },
+				{ image: ImageData.Paths.Icons.icon_glyph_on }
+			])
 		}
 
 		if (this.menu.runeState.value) {
-			const currentTime = GameRules.GameTime
-			Object.keys(this.cooldowns).forEach(key => {
-				const type = key as "active" | "bounty" | "xp"
-				if (
-					this.cooldowns[type] !== 0 &&
-					currentTime - this.cooldowns[type] > 2
-				) {
-					this.cooldowns[type] = 0
-				}
-			})
-
-			const textureMap: Record<"active" | "bounty" | "xp", string> = {
-				active: "regen",
-				bounty: "bounty",
-				xp: "xp"
+			const RuneTextures: { [key: string]: string } = {
+				dota_item_rune_spawner_powerup: "regen",
+				dota_item_rune_spawner_bounty: "bounty",
+				dota_item_rune_spawner_xp: "xp"
 			}
 
-			for (const type of ["active", "bounty", "xp"] as const) {
-				const remainingTime = this.getRemainingTime(this.getSpawnTime(type))
-				const texture = textureMap[type]
+			for (const rune of [
+				this.runeSpawnerPowerup,
+				this.runeSpawnerBounty,
+				this.runeSpawnerXp
+			] as const) {
+				if (rune === undefined) {
+					break
+				}
 
-				if (remainingTime > 0 && remainingTime < 0.1) {
-					this.SendNotif(
-						[
-							{ image: ImageData.GetRuneTexture(texture) },
-							{ image: ImageData.Paths.Icons.arrow_gold_dif }
-						],
-						type
-					)
+				if (rune.Remaining > 0 && rune.Remaining < 0.05) {
+					this.SendNotif([
+						{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
+						{ image: ImageData.Paths.Icons.arrow_gold_dif }
+					])
 				} else if (
-					remainingTime > 20 &&
-					remainingTime < 20.1 &&
+					rune.Remaining > 20 &&
+					rune.Remaining < 20.05 &&
 					this.menu.runeRemindState.value
 				) {
-					this.SendNotif(
-						[
-							{ image: ImageData.GetRuneTexture(texture) },
-							{ image: ImageData.Paths.Icons.icon_timer },
-							{ text: "20\nsec!" }
-						],
-						type
-					)
+					this.SendNotif([
+						{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
+						{ image: ImageData.Paths.Icons.icon_timer },
+						{ text: "20\nsec!" }
+					])
 				}
 			}
 		}
@@ -271,23 +273,12 @@ new (class CNotifications {
 
 	protected SendNotif(
 		components: { image?: string; text?: string }[],
-		type: "active" | "bounty" | "xp" | "other",
-		checkCooldown: boolean = true,
 		sound: string = ""
 	) {
-		if (checkCooldown && type !== "other" && this.cooldowns[type] !== 0) {
-			return
-		}
 		NotificationsSDK.Push(new GameNotification(sound, components))
-		if (type !== "other") {
-			this.cooldowns[type as "active" | "bounty" | "xp"] = GameRules?.GameTime ?? 0
-		}
 	}
 
-	protected TrySendGlyphNotif(
-		components: { image?: string; text?: string }[],
-		type: "active" | "bounty" | "xp" | "other"
-	) {
+	protected TrySendGlyphNotif(components: { image?: string; text?: string }[]) {
 		if (GameRules === undefined) {
 			return
 		}
@@ -299,79 +290,10 @@ new (class CNotifications {
 			: GameRules.GlyphCooldownRadiant
 
 		if (this.isGlyphCooldowned(enemyGlyphCooldown)) {
-			this.SendNotif(components, type, false)
+			this.SendNotif(components)
 		}
 
 		this.enemyGlyphCooldown = enemyGlyphCooldown
-	}
-
-	protected TrySendScanNotif(
-		components: { image?: string; text?: string }[],
-		type: "active" | "bounty" | "xp" | "other"
-	) {
-		if (GameRules === undefined) {
-			return
-		}
-		const isRadiant = LocalPlayer?.Team === 2
-		const enemyScanCooldown = isRadiant
-			? GameRules.ScanCooldownDire
-			: GameRules.ScanCooldownRadiant
-
-		const enemyScanCharges = isRadiant
-			? GameRules.ScanChargesDire
-			: GameRules.ScanChargesRadiant
-
-		if (
-			this.lastScanCooldown === 0 &&
-			enemyScanCharges === 0 &&
-			this.enemyScanCharges === 0
-		) {
-			return
-		}
-
-		if (
-			enemyScanCooldown - this.lastScanCooldown > 200 ||
-			(this.lastScanCooldown - enemyScanCooldown === this.lastScanCooldown &&
-				this.lastScanCooldown !== 0)
-		) {
-			this.enemyScanCharges++
-			this.lastScanCooldown = 0
-		}
-
-		if (this.isScanChargeUsed(enemyScanCharges)) {
-			this.SendNotif(components, type)
-		}
-
-		this.lastScanCooldown = enemyScanCooldown
-	}
-
-	private getSpawnTime(type: "active" | "bounty" | "xp" | "tormentor"): number {
-		const spawn = this.spawnTimes[type]
-		const bannedGamesModes = [
-			DOTAGameMode.DOTA_GAMEMODE_1V1MID,
-			DOTAGameMode.DOTA_GAMEMODE_CUSTOM,
-			DOTAGameMode.DOTA_GAMEMODE_EVENT,
-			DOTAGameMode.DOTA_GAMEMODE_NONE,
-			DOTAGameMode.DOTA_GAMEMODE_INTRO,
-			DOTAGameMode.DOTA_GAMEMODE_HW,
-			DOTAGameMode.DOTA_GAMEMODE_XMAS,
-			DOTAGameMode.DOTA_GAMEMODE_TUTORIAL,
-			DOTAGameMode.DOTA_GAMEMODE_FH
-		]
-		if (GameRules === undefined || bannedGamesModes.includes(GameRules.GameMode)) {
-			return -1
-		}
-		return GameRules?.GameMode === DOTAGameMode.DOTA_GAMEMODE_TURBO
-			? spawn / 2
-			: spawn
-	}
-
-	private getModuleTime(spawnTime: number): number {
-		return (GameRules?.GameTime ?? 0) % Math.floor(spawnTime)
-	}
-
-	private getRemainingTime(spawnTime: number): number {
-		return Math.max(0, spawnTime - this.getModuleTime(spawnTime))
 	}
 
 	private getTormentorRemainingTime(spawnTime: number): number {
@@ -394,14 +316,6 @@ new (class CNotifications {
 					DOTAScriptInventorySlot.DOTA_ITEM_NEUTRAL_SLOT
 				)
 			)
-	}
-
-	private isScanChargeUsed(realcharges: number): boolean {
-		if (this.enemyScanCharges > realcharges) {
-			this.enemyScanCharges = realcharges
-			return true
-		}
-		return false
 	}
 
 	private isGlyphCooldowned(realGlyphCooldown: number): boolean {
