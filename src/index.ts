@@ -1,3 +1,5 @@
+import "./translations"
+
 import {
 	Ability,
 	DOTAScriptInventorySlot,
@@ -10,6 +12,7 @@ import {
 	Item,
 	item_tpscroll,
 	LocalPlayer,
+	Menu,
 	Miniboss,
 	Modifier,
 	NotificationsSDK,
@@ -59,15 +62,19 @@ new (class CNotifications {
 			order.Ability_ instanceof item_tpscroll &&
 			order.Ability_.OwnerEntity !== undefined
 		) {
-			const fullNpcName = this.towerManager.CoordsInTowerRange(order.Position)
-			if (fullNpcName === undefined) {
+			const TowerName = this.towerManager.CoordsInTowerRange(order.Position)
+			if (TowerName === undefined) {
 				return
 			}
-			const parts = fullNpcName.split("_")
-			const towerData = [parts[2], "T" + parts[3].replace(/\D/g, ""), parts[4]] // [team, posName (ex.T2), lane]
+
+			const parts = TowerName.split("_")
+
+			// [team, posName (ex.T2), lane]
+			const towerData = [parts[2], "T" + parts[3].replace(/\D/g, ""), parts[4]]
 			if (towerData[2] === undefined) {
 				towerData[2] = "base"
 			}
+
 			this.SendNotif([
 				{
 					image: ImageData.GetHeroTexture(
@@ -135,7 +142,7 @@ new (class CNotifications {
 			return
 		}
 
-		if (ability.CooldownPercent === 100) {
+		if (ability.CooldownPercent === 100 && !(ability instanceof item_tpscroll)) {
 			this.SendNotif([
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
@@ -143,7 +150,7 @@ new (class CNotifications {
 				{ image: ImageData.Paths.Icons.hardsupport },
 				{ image: ImageData.GetSpellTexture(ability.Name) }
 			])
-		} else if (ability.CooldownPercent === 0 && !(ability instanceof item_tpscroll)) {
+		} else if (ability.CooldownPercent === 0) {
 			this.SendNotif([
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
@@ -208,13 +215,14 @@ new (class CNotifications {
 			this.getTormentorRemainingTime(this.nextTormentorSpawnTime) === 0 &&
 			!this.isTormentorAlive
 
-		if (tormentorSpawned) {
+		if (tormentorSpawned && this.menu.tormentorState.value) {
 			this.isTormentorAlive = true
-			// TODO: find tormentor img
 			this.SendNotif(
 				[
-					{ text: "tormentor" },
-					{ text: " " },
+					{
+						image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
+					},
+					{ image: ImageData.Paths.Icons.arrow_gold_dif },
 					{ image: ImageData.Paths.Icons.arrow_gold_dif }
 				],
 				"other"
@@ -251,20 +259,27 @@ new (class CNotifications {
 					break
 				}
 
-				if (rune.Remaining > 0 && rune.Remaining < 0.05) {
+				if (
+					rune.Remaining > 0 &&
+					rune.Remaining < 0.05 &&
+					GameRules.GameTime > 0 &&
+					this.menu.runeState.value
+				) {
 					this.SendNotif([
 						{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
+						{ image: ImageData.Paths.Icons.arrow_gold_dif },
 						{ image: ImageData.Paths.Icons.arrow_gold_dif }
 					])
 				} else if (
 					rune.Remaining > 20 &&
 					rune.Remaining < 20.05 &&
-					this.menu.runeRemindState.value
+					this.menu.runeRemindState.value &&
+					GameRules.GameTime > 0
 				) {
 					this.SendNotif([
 						{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
 						{ image: ImageData.Paths.Icons.icon_timer },
-						{ text: "20\nsec!" }
+						{ text: Menu.Localization.Localize("20\nsec!") }
 					])
 				}
 			}

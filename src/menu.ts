@@ -5,9 +5,9 @@ export class MenuManager {
 	private readonly baseNode = Menu.AddEntry("Visual")
 
 	private readonly tree = this.baseNode.AddNode(
-		"game notifications",
+		"Notifications-beta",
 		ImageData.Paths.Icons.icon_svg_other,
-		"notifications of game events"
+		"Notifications of game events"
 	)
 
 	private readonly runeTree: Menu.Node
@@ -15,8 +15,8 @@ export class MenuManager {
 	public readonly runeRemindState: Menu.Toggle
 
 	public readonly scanState: Menu.Toggle
-
 	public readonly glyphState: Menu.Toggle
+	public readonly tormentorState: Menu.Toggle
 
 	private readonly items: string[] = [
 		"item_tpscroll",
@@ -54,12 +54,12 @@ export class MenuManager {
 		this.State = this.tree.AddToggle("State")
 
 		this.runeTree = this.tree.AddNode("Runes notification")
-		this.runeState = this.runeTree.AddToggle("State")
+		this.runeState = this.runeTree.AddToggle("State", true)
 		this.runeRemindState = this.runeTree.AddToggle("Remind")
 
-		this.scanState = this.tree.AddToggle("Scans")
-
-		this.glyphState = this.tree.AddToggle("glyph")
+		this.scanState = this.tree.AddToggle("Scans", true)
+		this.glyphState = this.tree.AddToggle("Glyphs", true)
+		this.tormentorState = this.tree.AddToggle("Tormentor", true)
 
 		this.notifCostRange = this.tree.AddSlider(
 			"Item price",
@@ -67,7 +67,7 @@ export class MenuManager {
 			500,
 			6000,
 			0,
-			"Range to notif about buy"
+			"Range of cost to notif about item"
 		)
 
 		this.itemsState = this.tree.AddImageSelector(
