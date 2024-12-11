@@ -4,6 +4,7 @@ import {
 	Ability,
 	DOTAScriptInventorySlot,
 	Entity,
+	EntityManager,
 	EventsSDK,
 	ExecuteOrder,
 	GameRules,
@@ -14,6 +15,7 @@ import {
 	LocalPlayer,
 	Menu,
 	Miniboss,
+	MinibossSpawner,
 	Modifier,
 	NotificationsSDK,
 	RuneSpawnerBounty,
@@ -25,6 +27,7 @@ import {
 
 import { MenuManager } from "./menu"
 import { GameNotification } from "./notification"
+import { TormentorManager } from "./tormentorManager"
 import { towerManager } from "./towerManager"
 
 interface IHeroesItems {
@@ -39,11 +42,11 @@ new (class CNotifications {
 	private runeSpawnerPowerup: Nullable<RuneSpawnerPowerup>
 	private runeSpawnerBounty: Nullable<RuneSpawnerBounty>
 	private runeSpawnerXp: Nullable<RuneSpawnerXP>
+	private tormentorSpawnerRadiant: Nullable<TormentorManager>
+	private tormentorSpawnerDire: Nullable<TormentorManager>
 	private readonly heroesData: IHeroesItems[] = []
 	private readonly modifierRadarName = "modifier_radar_thinker"
 	private enemyGlyphCooldown = 0
-	private nextTormentorSpawnTime = 1200
-	private isTormentorAlive = false
 
 	constructor() {
 		EventsSDK.on("PostDataUpdate", this.PostDataUpdate.bind(this))
@@ -53,12 +56,34 @@ new (class CNotifications {
 		EventsSDK.on("EntityDestroyed", this.OnEntityDestroyed.bind(this))
 		EventsSDK.on("ModifierCreated", this.ModifierCreated.bind(this))
 		EventsSDK.on("PrepareUnitOrders", this.PrepareUnitOrders.bind(this))
+		EventsSDK.on("GameEvent", this.GameEvent.bind(this))
+	}
+
+	protected GameEvent(eventName: string, obj: any) {
+		if (eventName === "entity_killed") {
+			const entity = EntityManager.EntityByIndex(obj.entindex_killed)
+			if (entity instanceof Miniboss) {
+				if (
+					entity.SpawnPosition.x > 0 &&
+					entity.SpawnPosition.y > 0 &&
+					this.tormentorSpawnerRadiant
+				) {
+					this.tormentorSpawnerRadiant.UpdateSpawnTime()
+				} else if (
+					entity.SpawnPosition.x < 0 &&
+					entity.SpawnPosition.y < 0 &&
+					this.tormentorSpawnerDire
+				) {
+					this.tormentorSpawnerDire.UpdateSpawnTime()
+				}
+			}
+		}
 	}
 
 	protected PrepareUnitOrders(order: ExecuteOrder) {
 		if (
 			order.IsPlayerInput &&
-			order.Issuers[0].IsEnemy() &&
+			order.Issuers[0]?.IsEnemy() &&
 			order.Ability_ instanceof item_tpscroll &&
 			order.Ability_.OwnerEntity !== undefined
 		) {
@@ -105,8 +130,12 @@ new (class CNotifications {
 	}
 
 	protected OnEntityCreated(entity: Entity) {
-		if (entity instanceof Miniboss) {
-			this.isTormentorAlive = true
+		if (entity instanceof MinibossSpawner) {
+			if (entity.SpawnPosition.x > 0 && entity.SpawnPosition.y > 0) {
+				this.tormentorSpawnerRadiant = new TormentorManager(entity)
+			} else if (entity.SpawnPosition.x < 0 && entity.SpawnPosition.y < 0) {
+				this.tormentorSpawnerDire = new TormentorManager(entity)
+			}
 		} else if (entity instanceof RuneSpawnerPowerup) {
 			this.runeSpawnerPowerup = entity
 		} else if (entity instanceof RuneSpawnerBounty) {
@@ -119,9 +148,12 @@ new (class CNotifications {
 	}
 
 	protected OnEntityDestroyed(entity: Entity) {
-		if (entity instanceof Miniboss) {
-			this.isTormentorAlive = false
-			this.nextTormentorSpawnTime = (GameRules?.GameTime ?? 0) + 1200
+		if (entity instanceof MinibossSpawner) {
+			if (entity.SpawnPosition.x > 0 && entity.SpawnPosition.y > 0) {
+				this.tormentorSpawnerRadiant = undefined
+			} else if (entity.SpawnPosition.x < 0 && entity.SpawnPosition.y < 0) {
+				this.tormentorSpawnerDire = undefined
+			}
 		} else if (entity instanceof RuneSpawnerPowerup) {
 			this.runeSpawnerPowerup = undefined
 		} else if (entity instanceof RuneSpawnerBounty) {
@@ -211,22 +243,44 @@ new (class CNotifications {
 			return
 		}
 
-		const tormentorSpawned =
-			this.getTormentorRemainingTime(this.nextTormentorSpawnTime) === 0 &&
-			!this.isTormentorAlive
+		if (
+			this.tormentorSpawnerRadiant !== undefined &&
+			this.tormentorSpawnerDire !== undefined &&
+			this.menu.tormentorState.value
+		) {
+			if (
+				this.tormentorSpawnerRadiant.IsTormentorAlive &&
+				!this.tormentorSpawnerRadiant.SpawnOnce
+			) {
+				this.tormentorSpawnerRadiant.SpawnOnce = true
+				this.SendNotif(
+					[
+						{
+							image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
+						},
+						{ image: ImageData.Paths.Icons.tower_radiant },
+						{ image: ImageData.Paths.Icons.arrow_gold_dif }
+					],
+					"other"
+				)
+			}
 
-		if (tormentorSpawned && this.menu.tormentorState.value) {
-			this.isTormentorAlive = true
-			this.SendNotif(
-				[
-					{
-						image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
-					},
-					{ image: ImageData.Paths.Icons.arrow_gold_dif },
-					{ image: ImageData.Paths.Icons.arrow_gold_dif }
-				],
-				"other"
-			)
+			if (
+				this.tormentorSpawnerDire.IsTormentorAlive &&
+				!this.tormentorSpawnerDire.SpawnOnce
+			) {
+				this.tormentorSpawnerDire.SpawnOnce = true
+				this.SendNotif(
+					[
+						{
+							image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
+						},
+						{ image: ImageData.Paths.Icons.tower_dire },
+						{ image: ImageData.Paths.Icons.arrow_gold_dif }
+					],
+					"other"
+				)
+			}
 		}
 
 		if (this.menu.glyphState.value) {
@@ -309,10 +363,6 @@ new (class CNotifications {
 		}
 
 		this.enemyGlyphCooldown = enemyGlyphCooldown
-	}
-
-	private getTormentorRemainingTime(spawnTime: number): number {
-		return Math.max(0, spawnTime - (GameRules?.GameTime ?? 0))
 	}
 
 	private getItems(unit: Nullable<Unit>): Item[] {
