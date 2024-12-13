@@ -13,6 +13,7 @@ import {
 	Item,
 	item_tpscroll,
 	LocalPlayer,
+	MangoTree,
 	Menu,
 	Miniboss,
 	MinibossSpawner,
@@ -25,10 +26,11 @@ import {
 	Unit
 } from "github.com/octarine-public/wrapper/index"
 
+import { lotusManager } from "./managers/lotusManager"
+import { TormentorManager } from "./managers/tormentorManager"
+import { towerManager } from "./managers/towerManager"
 import { MenuManager } from "./menu"
 import { GameNotification } from "./notification"
-import { TormentorManager } from "./tormentorManager"
-import { towerManager } from "./towerManager"
 
 interface IHeroesItems {
 	unit: Unit
@@ -42,11 +44,17 @@ new (class CNotifications {
 	private runeSpawnerPowerup: Nullable<RuneSpawnerPowerup>
 	private runeSpawnerBounty: Nullable<RuneSpawnerBounty>
 	private runeSpawnerXp: Nullable<RuneSpawnerXP>
+
 	private tormentorSpawnerRadiant: Nullable<TormentorManager>
 	private tormentorSpawnerDire: Nullable<TormentorManager>
+
 	private readonly heroesData: IHeroesItems[] = []
-	private readonly modifierRadarName = "modifier_radar_thinker"
 	private enemyGlyphCooldown = 0
+
+	private readonly modifierRadarName = "modifier_radar_thinker"
+
+	private lotusSpawnerRadiant: Nullable<lotusManager>
+	private lotusSpawnerDire: Nullable<lotusManager>
 
 	constructor() {
 		EventsSDK.on("PostDataUpdate", this.PostDataUpdate.bind(this))
@@ -55,6 +63,7 @@ new (class CNotifications {
 		EventsSDK.on("EntityCreated", this.OnEntityCreated.bind(this))
 		EventsSDK.on("EntityDestroyed", this.OnEntityDestroyed.bind(this))
 		EventsSDK.on("ModifierCreated", this.ModifierCreated.bind(this))
+		EventsSDK.on("ModifierRemoved", this.ModifierRemoved.bind(this))
 		EventsSDK.on("PrepareUnitOrders", this.PrepareUnitOrders.bind(this))
 		EventsSDK.on("GameEvent", this.GameEvent.bind(this))
 	}
@@ -127,6 +136,31 @@ new (class CNotifications {
 				{ image: ImageData.Paths.Icons.icon_scan }
 			])
 		}
+
+		if (
+			this.menu.lotusState.value &&
+			modifier.Parent instanceof MangoTree &&
+			this.lotusSpawnerDire !== undefined &&
+			this.lotusSpawnerRadiant !== undefined
+		) {
+			if (modifier.Parent.Position.x > 0) {
+				this.lotusSpawnerDire.AddLotus(modifier)
+			} else if (modifier.Parent.Position.x < 0) {
+				this.lotusSpawnerRadiant.AddLotus(modifier)
+			}
+		}
+	}
+
+	protected ModifierRemoved(modifier: Modifier) {
+		if (
+			this.menu.lotusState.value &&
+			modifier.Parent instanceof MangoTree &&
+			this.lotusSpawnerDire !== undefined &&
+			this.lotusSpawnerRadiant !== undefined
+		) {
+			this.lotusSpawnerDire.RemoveLotus()
+			this.lotusSpawnerRadiant.RemoveLotus()
+		}
 	}
 
 	protected OnEntityCreated(entity: Entity) {
@@ -144,6 +178,12 @@ new (class CNotifications {
 			this.runeSpawnerXp = entity
 		} else if (entity instanceof Tower) {
 			this.towerManager.Add(entity)
+		} else if (entity instanceof MangoTree) {
+			if (entity.SpawnPosition.x < 0) {
+				this.lotusSpawnerDire = new lotusManager(entity)
+			} else if (entity.SpawnPosition.x > 0) {
+				this.lotusSpawnerRadiant = new lotusManager(entity)
+			}
 		}
 	}
 
@@ -169,7 +209,8 @@ new (class CNotifications {
 			ability.CooldownChangeTime === 0 ||
 			!this.menu.State.value ||
 			!this.menu.spellsState.IsEnabled(ability.Name) ||
-			!ability.OwnerEntity.IsEnemy()
+			!ability.OwnerEntity.IsEnemy() ||
+			(ability.IsItem && !(ability instanceof item_tpscroll))
 		) {
 			return
 		}
@@ -198,7 +239,8 @@ new (class CNotifications {
 			!(unit instanceof Hero) ||
 			!unit.IsEnemy() ||
 			unit.IsIllusion ||
-			!this.menu.State.value
+			!this.menu.State.value ||
+			!this.menu.itemState.value
 		) {
 			return
 		}
@@ -244,9 +286,61 @@ new (class CNotifications {
 		}
 
 		if (
+			this.menu.lotusState.value &&
+			this.lotusSpawnerRadiant !== undefined &&
+			this.lotusSpawnerDire !== undefined &&
+			this.lotusSpawnerRadiant.lotus !== undefined &&
+			this.lotusSpawnerDire.lotus !== undefined
+		) {
+			const RadiantNumOfLotuses =
+				this.lotusSpawnerRadiant.lotus.StackCount === 6
+					? 5
+					: this.lotusSpawnerRadiant.lotus.StackCount
+
+			const DireNumsOfLotuses =
+				this.lotusSpawnerDire.lotus.StackCount === 6
+					? 5
+					: this.lotusSpawnerDire.lotus.StackCount
+
+			if (
+				this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
+				this.lotusSpawnerRadiant.RemainingTime > 0 &&
+				this.lotusSpawnerRadiant.RemainingTime < 0.05
+			) {
+				this.SendNotif(
+					[
+						{
+							text: "lotus"
+						},
+						{ text: "Radiant" },
+						{ text: `${RadiantNumOfLotuses + 1}/6` }
+					],
+					"other"
+				)
+			}
+
+			if (
+				this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
+				this.lotusSpawnerDire.RemainingTime > 0 &&
+				this.lotusSpawnerDire.RemainingTime < 0.05
+			) {
+				this.SendNotif(
+					[
+						{
+							text: "lotus"
+						},
+						{ text: "Dire" },
+						{ text: `${DireNumsOfLotuses + 1}/6` }
+					],
+					"other"
+				)
+			}
+		}
+
+		if (
+			this.menu.tormentorState.value &&
 			this.tormentorSpawnerRadiant !== undefined &&
-			this.tormentorSpawnerDire !== undefined &&
-			this.menu.tormentorState.value
+			this.tormentorSpawnerDire !== undefined
 		) {
 			if (
 				this.tormentorSpawnerRadiant.IsTormentorAlive &&
@@ -325,15 +419,19 @@ new (class CNotifications {
 						{ image: ImageData.Paths.Icons.arrow_gold_dif }
 					])
 				} else if (
-					rune.Remaining > 20 &&
-					rune.Remaining < 20.05 &&
+					rune.Remaining > this.menu.notifRemindRange.value &&
+					rune.Remaining < this.menu.notifRemindRange.value + 0.05 &&
 					this.menu.runeRemindState.value &&
 					GameRules.GameTime > 0
 				) {
 					this.SendNotif([
 						{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
 						{ image: ImageData.Paths.Icons.icon_timer },
-						{ text: Menu.Localization.Localize("20\nsec!") }
+						{
+							text: Menu.Localization.Localize(
+								this.menu.notifRemindRange.value + "\nsec!"
+							)
+						}
 					])
 				}
 			}

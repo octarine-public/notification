@@ -5,9 +5,9 @@ import {
 } from "github.com/octarine-public/wrapper/index"
 
 export class TormentorManager {
-	public LastSpawnTime = -1 // game time (seconds)
-	public NextSpawnTime = 20 * 60 // game time (seconds)
-	public SpawnTime = 10 * 60 // game time (seconds)
+	public LastSpawnTime = -1
+	public NextSpawnTime = 20 * 60
+	public SpawnTime = 10 * 60
 	public EntityInstance: Entity
 	public SpawnOnce = false
 
