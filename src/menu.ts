@@ -13,7 +13,7 @@ export class MenuManager {
 	private readonly runeTree: Menu.Node
 	public readonly runeState: Menu.Toggle
 	public readonly runeRemindState: Menu.Toggle
-	public readonly notifRemindRange: Menu.Slider
+	public readonly runeRemindRange: Menu.Slider
 
 	public readonly scanState: Menu.Toggle
 	public readonly glyphState: Menu.Toggle
@@ -35,6 +35,9 @@ export class MenuManager {
 	]
 
 	public readonly spellsTree: Menu.Node
+	public readonly spellState: Menu.Toggle
+	public readonly spellReadyState: Menu.Toggle
+	public readonly spellUsedState: Menu.Toggle
 	public readonly spellsState: Menu.ImageSelector
 	private readonly spells: string[] = [
 		"enigma_black_hole",
@@ -56,39 +59,50 @@ export class MenuManager {
 	public readonly lotusTree: Menu.Node
 	public readonly lotusState: Menu.Toggle
 	public readonly lotusNumsRange: Menu.Slider
+	public readonly lotusRemindRange: Menu.Slider
 
 	constructor() {
 		this.State = this.tree.AddToggle("State")
 
-		this.runeTree = this.tree.AddNode("Runes notification")
-		this.runeState = this.runeTree.AddToggle("State", true)
-		this.runeRemindState = this.runeTree.AddToggle("Remind")
-		this.notifRemindRange = this.runeTree.AddSlider(
+		this.runeTree = this.tree.AddNode("Runes")
+		this.runeState = this.runeTree.AddToggle("Notifications", true, "", -1)
+		this.runeRemindState = this.runeTree.AddToggle("Remind", true, "", 1)
+		this.runeRemindRange = this.runeTree.AddSlider(
 			"Remind before",
 			20,
 			1,
 			60,
 			0,
-			"Reminds X seconds before spawn"
+			"Reminds X seconds before spawn",
+			2
 		)
 
 		this.scanState = this.tree.AddToggle("Scans", true)
 		this.glyphState = this.tree.AddToggle("Glyphs", true)
-		this.tormentorState = this.tree.AddToggle("Tormentor", true)
+		this.tormentorState = this.tree.AddToggle("Tormentors", true)
 
-		this.spellsTree = this.tree.AddNode("Spells notification")
+		this.spellsTree = this.tree.AddNode("Spells")
+		this.spellState = this.spellsTree.AddToggle("Notifications", true, "", -1)
+		this.spellReadyState = this.spellsTree.AddToggle("Ready", true, "", 1)
+		this.spellUsedState = this.spellsTree.AddToggle("Used", true, "", 1)
 		this.spellsState = this.spellsTree.AddImageSelector(
 			"Spells",
 			this.spells,
-			new Map(this.items.map(spell => [spell, true]))
+			new Map(this.items.map(spell => [spell, true])),
+			"",
+			true,
+			2
 		)
 
-		this.itemTree = this.tree.AddNode("Items notification")
-		this.itemState = this.itemTree.AddToggle("Items", true)
+		this.itemTree = this.tree.AddNode("Items")
+		this.itemState = this.itemTree.AddToggle("Notifications", true, "", -1)
 		this.itemsState = this.itemTree.AddImageSelector(
 			"Items",
 			this.items,
-			new Map(this.items.map(item => [item, true]))
+			new Map(this.items.map(item => [item, true])),
+			"",
+			true,
+			2
 		)
 		this.notifCostRange = this.itemTree.AddSlider(
 			"Item price",
@@ -96,18 +110,29 @@ export class MenuManager {
 			500,
 			6000,
 			0,
-			"Range of cost to notif about item"
+			"Range of cost to notif about item",
+			2
 		)
 
-		this.lotusTree = this.tree.AddNode("Lotuses notification")
-		this.lotusState = this.lotusTree.AddToggle("Lotuses", true)
+		this.lotusTree = this.tree.AddNode("Lotuses")
+		this.lotusState = this.lotusTree.AddToggle("Notifications", true, "", -1)
 		this.lotusNumsRange = this.lotusTree.AddSlider(
-			"Lotuses nums range",
+			"Notify me when more than",
 			0,
 			1,
 			6,
 			0,
-			"Nums of lotuses to notif"
+			"",
+			2
+		)
+		this.lotusRemindRange = this.lotusTree.AddSlider(
+			"Remind before",
+			10,
+			1,
+			60,
+			0,
+			"Reminds in X seconds before spawn",
+			2
 		)
 	}
 }

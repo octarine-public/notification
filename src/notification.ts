@@ -11,8 +11,8 @@ export class GameNotification extends Notification {
 	private readonly components: { image?: string; text?: string }[]
 	private readonly minWidth = 175
 	private readonly maxWidth = 350
-	private readonly minFontSize = 18
-	private readonly maxFontSize = 38
+	private readonly minFontSize = 22
+	private readonly maxFontSize = 48
 	private readonly scaleFactor = 0.8
 
 	constructor(playSoundName: string, components: { image?: string; text?: string }[]) {

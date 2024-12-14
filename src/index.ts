@@ -19,6 +19,7 @@ import {
 	MinibossSpawner,
 	Modifier,
 	NotificationsSDK,
+	RuneSpawner,
 	RuneSpawnerBounty,
 	RuneSpawnerPowerup,
 	RuneSpawnerXP,
@@ -180,9 +181,9 @@ new (class CNotifications {
 			this.towerManager.Add(entity)
 		} else if (entity instanceof MangoTree) {
 			if (entity.SpawnPosition.x < 0) {
-				this.lotusSpawnerDire = new lotusManager(entity)
-			} else if (entity.SpawnPosition.x > 0) {
 				this.lotusSpawnerRadiant = new lotusManager(entity)
+			} else if (entity.SpawnPosition.x > 0) {
+				this.lotusSpawnerDire = new lotusManager(entity)
 			}
 		}
 	}
@@ -200,6 +201,12 @@ new (class CNotifications {
 			this.runeSpawnerBounty = undefined
 		} else if (entity instanceof RuneSpawnerXP) {
 			this.runeSpawnerXp = undefined
+		} else if (entity instanceof MangoTree) {
+			if (entity.SpawnPosition.x < 0) {
+				this.lotusSpawnerRadiant = undefined
+			} else if (entity.SpawnPosition.x > 0) {
+				this.lotusSpawnerDire = undefined
+			}
 		}
 	}
 
@@ -208,14 +215,15 @@ new (class CNotifications {
 			!(ability.OwnerEntity instanceof Hero) ||
 			ability.CooldownChangeTime === 0 ||
 			!this.menu.State.value ||
+			!this.menu.spellState.value ||
 			!this.menu.spellsState.IsEnabled(ability.Name) ||
 			!ability.OwnerEntity.IsEnemy() ||
-			(ability.IsItem && !(ability instanceof item_tpscroll))
+			ability.IsItem
 		) {
 			return
 		}
 
-		if (ability.CooldownPercent === 100 && !(ability instanceof item_tpscroll)) {
+		if (ability.CooldownPercent === 100 && this.menu.spellUsedState.value) {
 			this.SendNotif([
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
@@ -223,12 +231,12 @@ new (class CNotifications {
 				{ image: ImageData.Paths.Icons.hardsupport },
 				{ image: ImageData.GetSpellTexture(ability.Name) }
 			])
-		} else if (ability.CooldownPercent === 0) {
+		} else if (ability.CooldownPercent === 0 && this.menu.spellReadyState.value) {
 			this.SendNotif([
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
 				},
-				{ image: ImageData.Paths.Icons.icon_timer },
+				{ image: ImageData.Paths.Icons.icon_svg_format_time },
 				{ image: ImageData.GetSpellTexture(ability.Name) }
 			])
 		}
@@ -285,108 +293,50 @@ new (class CNotifications {
 			return
 		}
 
-		if (
-			this.menu.lotusState.value &&
-			this.lotusSpawnerRadiant !== undefined &&
-			this.lotusSpawnerDire !== undefined &&
-			this.lotusSpawnerRadiant.lotus !== undefined &&
-			this.lotusSpawnerDire.lotus !== undefined
-		) {
-			const RadiantNumOfLotuses =
-				this.lotusSpawnerRadiant.lotus.StackCount === 6
-					? 5
-					: this.lotusSpawnerRadiant.lotus.StackCount
+		if (this.menu.lotusState.value) {
+			const componentsRadiant = [
+				{ image: ImageData.Paths.Icons.tower_radiant },
+				{
+					image: ImageData.Paths.ItemIcons + "/famango_png.vtex_c"
+				}
+			]
+			const componentsDire = [
+				{ image: ImageData.Paths.Icons.tower_dire },
+				{
+					image: ImageData.Paths.ItemIcons + "/famango_png.vtex_c"
+				}
+			]
 
-			const DireNumsOfLotuses =
-				this.lotusSpawnerDire.lotus.StackCount === 6
-					? 5
-					: this.lotusSpawnerDire.lotus.StackCount
-
-			if (
-				this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
-				this.lotusSpawnerRadiant.RemainingTime > 0 &&
-				this.lotusSpawnerRadiant.RemainingTime < 0.05
-			) {
-				this.SendNotif(
-					[
-						{
-							text: "lotus"
-						},
-						{ text: "Radiant" },
-						{ text: `${RadiantNumOfLotuses + 1}/6` }
-					],
-					"other"
-				)
-			}
-
-			if (
-				this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
-				this.lotusSpawnerDire.RemainingTime > 0 &&
-				this.lotusSpawnerDire.RemainingTime < 0.05
-			) {
-				this.SendNotif(
-					[
-						{
-							text: "lotus"
-						},
-						{ text: "Dire" },
-						{ text: `${DireNumsOfLotuses + 1}/6` }
-					],
-					"other"
-				)
-			}
+			this.TrySendLotusNotif(componentsRadiant, componentsDire)
 		}
 
-		if (
-			this.menu.tormentorState.value &&
-			this.tormentorSpawnerRadiant !== undefined &&
-			this.tormentorSpawnerDire !== undefined
-		) {
-			if (
-				this.tormentorSpawnerRadiant.IsTormentorAlive &&
-				!this.tormentorSpawnerRadiant.SpawnOnce
-			) {
-				this.tormentorSpawnerRadiant.SpawnOnce = true
-				this.SendNotif(
-					[
-						{
-							image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
-						},
-						{ image: ImageData.Paths.Icons.tower_radiant },
-						{ image: ImageData.Paths.Icons.arrow_gold_dif }
-					],
-					"other"
-				)
-			}
-
-			if (
-				this.tormentorSpawnerDire.IsTormentorAlive &&
-				!this.tormentorSpawnerDire.SpawnOnce
-			) {
-				this.tormentorSpawnerDire.SpawnOnce = true
-				this.SendNotif(
-					[
-						{
-							image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
-						},
-						{ image: ImageData.Paths.Icons.tower_dire },
-						{ image: ImageData.Paths.Icons.arrow_gold_dif }
-					],
-					"other"
-				)
-			}
+		if (this.menu.tormentorState.value) {
+			const componentsRadiant = [
+				{ image: ImageData.Paths.Icons.tower_radiant },
+				{ image: ImageData.Paths.Icons.icon_svg_format_time },
+				{
+					image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
+				}
+			]
+			const componentsDire = [
+				{ image: ImageData.Paths.Icons.tower_dire },
+				{ image: ImageData.Paths.Icons.icon_svg_format_time },
+				{
+					image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
+				}
+			]
+			this.TrySendTormentorNotif(componentsRadiant, componentsDire)
 		}
 
 		if (this.menu.glyphState.value) {
 			const isRadiant = LocalPlayer.Team === 2
-
 			const towerIcon = isRadiant
 				? ImageData.Paths.Icons.tower_dire
 				: ImageData.Paths.Icons.tower_radiant
 
 			this.TrySendGlyphNotif([
 				{ image: towerIcon },
-				{ image: ImageData.Paths.Icons.icon_timer },
+				{ image: ImageData.Paths.Icons.icon_svg_format_time },
 				{ image: ImageData.Paths.Icons.icon_glyph_on }
 			])
 		}
@@ -407,33 +357,23 @@ new (class CNotifications {
 					break
 				}
 
-				if (
-					rune.Remaining > 0 &&
-					rune.Remaining < 0.05 &&
-					GameRules.GameTime > 0 &&
-					this.menu.runeState.value
-				) {
-					this.SendNotif([
-						{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
-						{ image: ImageData.Paths.Icons.arrow_gold_dif },
-						{ image: ImageData.Paths.Icons.arrow_gold_dif }
-					])
-				} else if (
-					rune.Remaining > this.menu.notifRemindRange.value &&
-					rune.Remaining < this.menu.notifRemindRange.value + 0.05 &&
-					this.menu.runeRemindState.value &&
-					GameRules.GameTime > 0
-				) {
-					this.SendNotif([
-						{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
-						{ image: ImageData.Paths.Icons.icon_timer },
-						{
-							text: Menu.Localization.Localize(
-								this.menu.notifRemindRange.value + "\nsec!"
-							)
-						}
-					])
-				}
+				const components = [
+					{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
+					{ image: ImageData.Paths.Icons.icon_svg_format_time },
+					{ image: ImageData.GetItemTexture("item_bottle") }
+				]
+
+				const componentsRemind = [
+					{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
+					{ image: ImageData.Paths.Icons.icon_svg_time_fast },
+					{
+						text: Menu.Localization.Localize(
+							this.menu.runeRemindRange.value + "\nsec!"
+						)
+					}
+				]
+
+				this.TrySendRuneNotif(components, componentsRemind, rune)
 			}
 		}
 	}
@@ -446,21 +386,131 @@ new (class CNotifications {
 	}
 
 	protected TrySendGlyphNotif(components: { image?: string; text?: string }[]) {
-		if (GameRules === undefined) {
-			return
-		}
-
 		const isRadiant = LocalPlayer?.Team === 2
 
 		const enemyGlyphCooldown = isRadiant
-			? GameRules.GlyphCooldownDire
-			: GameRules.GlyphCooldownRadiant
+			? GameRules!.GlyphCooldownDire
+			: GameRules!.GlyphCooldownRadiant
 
 		if (this.isGlyphCooldowned(enemyGlyphCooldown)) {
 			this.SendNotif(components)
 		}
 
 		this.enemyGlyphCooldown = enemyGlyphCooldown
+	}
+
+	protected TrySendTormentorNotif(
+		componentsRadiant: { image?: string; text?: string }[],
+		componentsDire: { image?: string; text?: string }[]
+	) {
+		if (
+			this.tormentorSpawnerRadiant === undefined ||
+			this.tormentorSpawnerDire === undefined
+		) {
+			return
+		}
+
+		if (
+			this.tormentorSpawnerRadiant.IsTormentorAlive &&
+			!this.tormentorSpawnerRadiant.SpawnOnce
+		) {
+			this.tormentorSpawnerRadiant.SpawnOnce = true
+			this.SendNotif(componentsRadiant, "other")
+		}
+
+		if (
+			this.tormentorSpawnerDire.IsTormentorAlive &&
+			!this.tormentorSpawnerDire.SpawnOnce
+		) {
+			this.tormentorSpawnerDire.SpawnOnce = true
+			this.SendNotif(componentsDire, "other")
+		}
+	}
+
+	protected TrySendLotusNotif(
+		componentsRadiant: { image?: string; text?: string }[],
+		componentsDire: { image?: string; text?: string }[]
+	) {
+		if (
+			this.lotusSpawnerRadiant === undefined ||
+			this.lotusSpawnerDire === undefined ||
+			this.lotusSpawnerRadiant.lotus === undefined ||
+			this.lotusSpawnerDire.lotus === undefined
+		) {
+			return
+		}
+
+		const RadiantNumOfLotuses =
+			this.lotusSpawnerRadiant.lotus.StackCount === 6
+				? 5
+				: this.lotusSpawnerRadiant.lotus.StackCount
+
+		const DireNumsOfLotuses =
+			this.lotusSpawnerDire.lotus.StackCount === 6
+				? 5
+				: this.lotusSpawnerDire.lotus.StackCount
+
+		componentsRadiant.push({ text: `${RadiantNumOfLotuses + 1}/6` })
+		componentsDire.push({ text: `${DireNumsOfLotuses + 1}/6` })
+
+		if (
+			this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
+			this.lotusSpawnerRadiant.RemainingTime > 0 &&
+			this.lotusSpawnerRadiant.RemainingTime < 0.05
+		) {
+			this.SendNotif(componentsRadiant, "other")
+		}
+
+		if (
+			this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
+			this.lotusSpawnerDire.RemainingTime > 0 &&
+			this.lotusSpawnerDire.RemainingTime < 0.05
+		) {
+			this.SendNotif(componentsDire, "other")
+		}
+
+		if (
+			(this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
+				this.lotusSpawnerDire.RemainingTime > this.menu.lotusRemindRange.value &&
+				this.lotusSpawnerDire.RemainingTime <
+					this.menu.lotusRemindRange.value + 0.05) ||
+			(this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
+				this.lotusSpawnerRadiant.RemainingTime >
+					this.menu.lotusRemindRange.value &&
+				this.lotusSpawnerRadiant.RemainingTime <
+					this.menu.lotusRemindRange.value + 0.05)
+		) {
+			const componentRemind = [
+				{
+					image: ImageData.Paths.ItemIcons + "/famango_png.vtex_c"
+				},
+				{ image: ImageData.Paths.Icons.icon_svg_time_fast },
+				{ text: this.menu.lotusRemindRange.value + "\nsec!" }
+			]
+			this.SendNotif(componentRemind, "other")
+		}
+	}
+
+	protected TrySendRuneNotif(
+		components: { image?: string; text?: string }[],
+		componentsRemind: { image?: string; text?: string }[],
+		rune: RuneSpawner
+	) {
+		if (
+			rune.Remaining > 0 &&
+			rune.Remaining < 0.05 &&
+			GameRules!.GameTime > 0 &&
+			this.menu.runeState.value
+		) {
+			this.SendNotif(components)
+		} else if (
+			rune.Remaining > this.menu.runeRemindRange.value &&
+			rune.Remaining < this.menu.runeRemindRange.value + 0.05 &&
+			this.menu.runeRemindState.value &&
+			GameRules!.GameTime > 0
+		) {
+			this.SendNotif(componentsRemind)
+		}
 	}
 
 	private getItems(unit: Nullable<Unit>): Item[] {

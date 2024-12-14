@@ -1,12 +1,18 @@
 {
 	"Notifications-beta": "Уведомления-бета",
 	"Notifications of game events": "Игровые уведомления",
-	"Runes notification": "Уведомления рун",
 	"Remind": "Напоминание",
+	"Runes": "Руны",
 	"Scans": "Сканы",
 	"Glyphs": "Глифы",
-	"Tormentor": "Терзатель",
+	"Tormentors": "Терзатели",
+	"Lotuses": "Лотусы",
 	"Item price": "Стоимость предметов",
 	"Range of cost to notif about item": "Диапозон cтоимости для уведомления об предмете",
-	"\nsec!": "\nсек!"
+	"\nsec!": "\nсек!",
+	"Notify me when more than": "Уведомлять когда больше чем",
+	"Remind before": "Напомнить за",
+	"Reminds in X seconds before spawn": "Напоминает за X секунд до спавна",
+	"Ready": "Готово",
+	"Used": "Использовано"
 }
