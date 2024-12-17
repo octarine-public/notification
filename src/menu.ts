@@ -18,6 +18,7 @@ export class MenuManager {
 	public readonly scanState: Menu.Toggle
 	public readonly glyphState: Menu.Toggle
 	public readonly tormentorState: Menu.Toggle
+	public readonly rubickStolenState: Menu.Toggle
 
 	public readonly itemTree: Menu.Node
 	public readonly itemState: Menu.Toggle
@@ -80,6 +81,11 @@ export class MenuManager {
 		this.scanState = this.tree.AddToggle("Scans", true)
 		this.glyphState = this.tree.AddToggle("Glyphs", true)
 		this.tormentorState = this.tree.AddToggle("Tormentors", true)
+		this.rubickStolenState = this.tree.AddToggle(
+			"Stolen Spells",
+			true,
+			"What spell has been stolen"
+		)
 
 		this.spellsTree = this.tree.AddNode("Spells")
 		this.spellState = this.spellsTree.AddToggle("Notifications", true, "", -1)

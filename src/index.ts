@@ -19,6 +19,9 @@ import {
 	MinibossSpawner,
 	Modifier,
 	NotificationsSDK,
+	npc_dota_hero_rubick,
+	rubick_empty1,
+	rubick_empty2,
 	RuneSpawner,
 	RuneSpawnerBounty,
 	RuneSpawnerPowerup,
@@ -57,10 +60,13 @@ new (class CNotifications {
 	private lotusSpawnerRadiant: Nullable<lotusManager>
 	private lotusSpawnerDire: Nullable<lotusManager>
 
+	private stolenSpells: Nullable<Ability>[] = []
+
 	constructor() {
 		EventsSDK.on("PostDataUpdate", this.PostDataUpdate.bind(this))
 		EventsSDK.on("UnitItemsChanged", this.UnitItemsChanged.bind(this))
 		EventsSDK.on("AbilityCooldownChanged", this.AbilityCooldownChanged.bind(this))
+		EventsSDK.on("UnitAbilitiesChanged", this.UnitAbilitiesChanged.bind(this))
 		EventsSDK.on("EntityCreated", this.OnEntityCreated.bind(this))
 		EventsSDK.on("EntityDestroyed", this.OnEntityDestroyed.bind(this))
 		EventsSDK.on("ModifierCreated", this.ModifierCreated.bind(this))
@@ -91,9 +97,10 @@ new (class CNotifications {
 	}
 
 	protected PrepareUnitOrders(order: ExecuteOrder) {
+		if (!order.IsPlayerInput && !order.Issuers[0]?.IsEnemy()) {
+			return
+		}
 		if (
-			order.IsPlayerInput &&
-			order.Issuers[0]?.IsEnemy() &&
 			order.Ability_ instanceof item_tpscroll &&
 			order.Ability_.OwnerEntity !== undefined
 		) {
@@ -120,6 +127,41 @@ new (class CNotifications {
 				{ image: ImageData.GetSpellTexture(order.Ability_.Name) },
 				{ text: `${towerData[1]}\n${towerData[2]}` }
 			])
+		}
+	}
+
+	protected UnitAbilitiesChanged(unit: Unit) {
+		if (
+			!(unit instanceof npc_dota_hero_rubick) ||
+			!unit.IsEnemy() ||
+			!this.menu.rubickStolenState.value
+		) {
+			return
+		}
+
+		const currentSpells = [unit.Spells[3], unit.Spells[4]]
+		const delta = currentSpells.filter(
+			spell => spell !== undefined && !this.stolenSpells.includes(spell)
+		)
+		this.stolenSpells = currentSpells
+
+		if (delta.length > 0) {
+			delta.forEach(spell => {
+				if (
+					spell === undefined ||
+					spell instanceof rubick_empty1 ||
+					spell instanceof rubick_empty2
+				) {
+					return
+				}
+				this.SendNotif([
+					{
+						image: ImageData.GetHeroTexture(unit.Name, false)
+					},
+					{ image: ImageData.GetSpellTexture("rubick_spell_steal") },
+					{ image: ImageData.GetSpellTexture(spell.Name) }
+				])
+			})
 		}
 	}
 
@@ -165,6 +207,9 @@ new (class CNotifications {
 	}
 
 	protected OnEntityCreated(entity: Entity) {
+		if (!entity.IsEnemy()) {
+			return
+		}
 		if (entity instanceof MinibossSpawner) {
 			if (entity.SpawnPosition.x > 0 && entity.SpawnPosition.y > 0) {
 				this.tormentorSpawnerRadiant = new TormentorManager(entity)
@@ -185,10 +230,15 @@ new (class CNotifications {
 			} else if (entity.SpawnPosition.x > 0) {
 				this.lotusSpawnerDire = new lotusManager(entity)
 			}
+		} else if (entity instanceof npc_dota_hero_rubick) {
+			this.stolenSpells.push(undefined, undefined)
 		}
 	}
 
 	protected OnEntityDestroyed(entity: Entity) {
+		if (!entity.IsEnemy()) {
+			return
+		}
 		if (entity instanceof MinibossSpawner) {
 			if (entity.SpawnPosition.x > 0 && entity.SpawnPosition.y > 0) {
 				this.tormentorSpawnerRadiant = undefined
@@ -207,6 +257,8 @@ new (class CNotifications {
 			} else if (entity.SpawnPosition.x > 0) {
 				this.lotusSpawnerDire = undefined
 			}
+		} else if (entity instanceof npc_dota_hero_rubick) {
+			this.stolenSpells.remove(undefined, undefined)
 		}
 	}
 
