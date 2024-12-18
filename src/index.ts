@@ -30,6 +30,7 @@ import {
 	Unit
 } from "github.com/octarine-public/wrapper/index"
 
+import { Icons } from "./icons"
 import { lotusManager } from "./managers/lotusManager"
 import { TormentorManager } from "./managers/tormentorManager"
 import { towerManager } from "./managers/towerManager"
@@ -100,6 +101,7 @@ new (class CNotifications {
 		if (!order.IsPlayerInput && !order.Issuers[0]?.IsEnemy()) {
 			return
 		}
+
 		if (
 			order.Ability_ instanceof item_tpscroll &&
 			order.Ability_.OwnerEntity !== undefined
@@ -124,8 +126,7 @@ new (class CNotifications {
 						false
 					)
 				},
-				{ image: ImageData.GetSpellTexture(order.Ability_.Name) },
-				{ text: `${towerData[1]}\n${towerData[2]}` }
+				{ text: `TP ${towerData[1]} ${towerData[2]}!` }
 			])
 		}
 	}
@@ -158,7 +159,7 @@ new (class CNotifications {
 					{
 						image: ImageData.GetHeroTexture(unit.Name, false)
 					},
-					{ image: ImageData.GetSpellTexture("rubick_spell_steal") },
+					{ text: Menu.Localization.Localize("Stole") },
 					{ image: ImageData.GetSpellTexture(spell.Name) }
 				])
 			})
@@ -175,8 +176,8 @@ new (class CNotifications {
 		) {
 			this.SendNotif([
 				{ image: ImageData.GetHeroTexture(modifier.Caster.Name) },
-				{ image: ImageData.Paths.Icons.hardsupport },
-				{ image: ImageData.Paths.Icons.icon_scan }
+				{ text: Menu.Localization.Localize("Scanned") },
+				{ image: Icons.icon_radar }
 			])
 		}
 
@@ -280,7 +281,7 @@ new (class CNotifications {
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
 				},
-				{ image: ImageData.Paths.Icons.hardsupport },
+				{ text: Menu.Localization.Localize("Used") },
 				{ image: ImageData.GetSpellTexture(ability.Name) }
 			])
 		} else if (ability.CooldownPercent === 0 && this.menu.spellReadyState.value) {
@@ -288,7 +289,7 @@ new (class CNotifications {
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
 				},
-				{ image: ImageData.Paths.Icons.icon_svg_format_time },
+				{ text: Menu.Localization.Localize("Available") },
 				{ image: ImageData.GetSpellTexture(ability.Name) }
 			])
 		}
@@ -324,7 +325,7 @@ new (class CNotifications {
 					) {
 						this.SendNotif([
 							{ image: ImageData.GetHeroTexture(unit.Name, false) },
-							{ image: ImageData.Paths.Icons.gold_large },
+							{ text: Menu.Localization.Localize("Bought") },
 							{ image: ImageData.GetItemTexture(newItem.Name) }
 						])
 					}
@@ -346,50 +347,32 @@ new (class CNotifications {
 		}
 
 		if (this.menu.lotusState.value) {
-			const componentsRadiant = [
-				{ image: ImageData.Paths.Icons.tower_radiant },
+			const components = [
+				{ image: Icons.icon_lotus },
 				{
-					image: ImageData.Paths.ItemIcons + "/famango_png.vtex_c"
-				}
-			]
-			const componentsDire = [
-				{ image: ImageData.Paths.Icons.tower_dire },
-				{
-					image: ImageData.Paths.ItemIcons + "/famango_png.vtex_c"
+					text: Menu.Localization.Localize("Lotuses spawned!")
 				}
 			]
 
-			this.TrySendLotusNotif(componentsRadiant, componentsDire)
+			this.TrySendLotusNotif(components)
 		}
 
 		if (this.menu.tormentorState.value) {
 			const componentsRadiant = [
-				{ image: ImageData.Paths.Icons.tower_radiant },
-				{ image: ImageData.Paths.Icons.icon_svg_format_time },
-				{
-					image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
-				}
+				{ image: Icons.icon_tormentor },
+				{ text: Menu.Localization.Localize("Tormentor spawned!") }
 			]
 			const componentsDire = [
-				{ image: ImageData.Paths.Icons.tower_dire },
-				{ image: ImageData.Paths.Icons.icon_svg_format_time },
-				{
-					image: `${ImageData.Paths.Images}/fantasy_craft/fantasy_emblem_tormentor_png.vtex_c`
-				}
+				{ image: Icons.icon_tormentor },
+				{ text: Menu.Localization.Localize("Tormentor spawned!") }
 			]
 			this.TrySendTormentorNotif(componentsRadiant, componentsDire)
 		}
 
 		if (this.menu.glyphState.value) {
-			const isRadiant = LocalPlayer.Team === 2
-			const towerIcon = isRadiant
-				? ImageData.Paths.Icons.tower_dire
-				: ImageData.Paths.Icons.tower_radiant
-
 			this.TrySendGlyphNotif([
-				{ image: towerIcon },
-				{ image: ImageData.Paths.Icons.icon_svg_format_time },
-				{ image: ImageData.Paths.Icons.icon_glyph_on }
+				{ image: Icons.icon_tower },
+				{ text: Menu.Localization.Localize("Glyph avalibale") }
 			])
 		}
 
@@ -409,19 +392,25 @@ new (class CNotifications {
 					break
 				}
 
+				let runeName = ""
+
+				if (rune instanceof RuneSpawnerPowerup) {
+					runeName = "Powerup"
+				} else if (rune instanceof RuneSpawnerBounty) {
+					runeName = "Bounty"
+				} else if (rune instanceof RuneSpawnerXP) {
+					runeName = "XP"
+				}
+
 				const components = [
 					{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
-					{ image: ImageData.Paths.Icons.icon_svg_format_time },
-					{ image: ImageData.GetItemTexture("item_bottle") }
+					{ text: `${runeName} Rune ${Menu.Localization.Localize("spawned!")}` }
 				]
 
 				const componentsRemind = [
-					{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
-					{ image: ImageData.Paths.Icons.icon_svg_time_fast },
+					{ image: Icons.icon_rune },
 					{
-						text: Menu.Localization.Localize(
-							this.menu.runeRemindRange.value + "\nsec!"
-						)
+						text: `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}s`
 					}
 				]
 
@@ -479,10 +468,7 @@ new (class CNotifications {
 		}
 	}
 
-	protected TrySendLotusNotif(
-		componentsRadiant: { image?: string; text?: string }[],
-		componentsDire: { image?: string; text?: string }[]
-	) {
+	protected TrySendLotusNotif(components: { image?: string; text?: string }[]) {
 		if (
 			this.lotusSpawnerRadiant === undefined ||
 			this.lotusSpawnerDire === undefined ||
@@ -502,15 +488,12 @@ new (class CNotifications {
 				? 5
 				: this.lotusSpawnerDire.lotus.StackCount
 
-		componentsRadiant.push({ text: `${RadiantNumOfLotuses + 1}/6` })
-		componentsDire.push({ text: `${DireNumsOfLotuses + 1}/6` })
-
 		if (
 			this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
 			this.lotusSpawnerRadiant.RemainingTime > 0 &&
 			this.lotusSpawnerRadiant.RemainingTime < 0.05
 		) {
-			this.SendNotif(componentsRadiant, "other")
+			this.SendNotif(components, "other")
 		}
 
 		if (
@@ -518,7 +501,7 @@ new (class CNotifications {
 			this.lotusSpawnerDire.RemainingTime > 0 &&
 			this.lotusSpawnerDire.RemainingTime < 0.05
 		) {
-			this.SendNotif(componentsDire, "other")
+			this.SendNotif(components, "other")
 		}
 
 		if (
@@ -534,10 +517,11 @@ new (class CNotifications {
 		) {
 			const componentRemind = [
 				{
-					image: ImageData.Paths.ItemIcons + "/famango_png.vtex_c"
+					image: Icons.icon_lotus
 				},
-				{ image: ImageData.Paths.Icons.icon_svg_time_fast },
-				{ text: this.menu.lotusRemindRange.value + "\nsec!" }
+				{
+					text: `${Menu.Localization.Localize("To lotuses:")} ${this.menu.lotusRemindRange.value}s`
+				}
 			]
 			this.SendNotif(componentRemind, "other")
 		}

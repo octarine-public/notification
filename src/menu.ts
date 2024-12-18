@@ -84,7 +84,7 @@ export class MenuManager {
 		this.rubickStolenState = this.tree.AddToggle(
 			"Stolen Spells",
 			true,
-			"What spell has been stolen"
+			"What spell has been stolen by Rubick"
 		)
 
 		this.spellsTree = this.tree.AddNode("Spells")
