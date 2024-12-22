@@ -7,7 +7,6 @@ import {
 	RendererSDK
 } from "github.com/octarine-public/wrapper/index"
 
-// TODO: if text lenght small add to center
 export class GameNotification extends Notification {
 	private readonly components: { image?: string; text?: string }[]
 	private readonly minWidth = 12
