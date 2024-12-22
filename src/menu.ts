@@ -17,7 +17,6 @@ export class MenuManager {
 
 	public readonly scanState: Menu.Toggle
 	public readonly glyphState: Menu.Toggle
-	public readonly tormentorState: Menu.Toggle
 	public readonly rubickStolenState: Menu.Toggle
 
 	public readonly itemTree: Menu.Node
@@ -62,6 +61,10 @@ export class MenuManager {
 	public readonly lotusNumsRange: Menu.Slider
 	public readonly lotusRemindRange: Menu.Slider
 
+	public readonly tormentorTree: Menu.Node
+	public readonly tormentorState: Menu.Toggle
+	public readonly tormentorRemindRange: Menu.Slider
+
 	constructor() {
 		this.State = this.tree.AddToggle("State")
 
@@ -80,7 +83,6 @@ export class MenuManager {
 
 		this.scanState = this.tree.AddToggle("Scans", true)
 		this.glyphState = this.tree.AddToggle("Glyphs", true)
-		this.tormentorState = this.tree.AddToggle("Tormentors", true)
 		this.rubickStolenState = this.tree.AddToggle(
 			"Stolen Spells",
 			true,
@@ -134,6 +136,18 @@ export class MenuManager {
 		this.lotusRemindRange = this.lotusTree.AddSlider(
 			"Remind before",
 			10,
+			1,
+			60,
+			0,
+			"Reminds in X seconds before spawn",
+			2
+		)
+
+		this.tormentorTree = this.tree.AddNode("Tormentors")
+		this.tormentorState = this.tormentorTree.AddToggle("Notifications", true)
+		this.tormentorRemindRange = this.tormentorTree.AddSlider(
+			"Remind before",
+			40,
 			1,
 			60,
 			0,

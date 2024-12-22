@@ -42,6 +42,7 @@ interface IHeroesItems {
 	items: Item[]
 }
 
+// TODO: CLEANUP
 new (class CNotifications {
 	private readonly menu = new MenuManager()
 	private readonly towerManager = new towerManager()
@@ -360,19 +361,24 @@ new (class CNotifications {
 		if (this.menu.tormentorState.value) {
 			const componentsRadiant = [
 				{ image: Icons.icon_tormentor },
-				{ text: Menu.Localization.Localize("Tormentor spawned!") }
+				{ text: Menu.Localization.Localize("Tormentor spawned!") },
+				{ background: Icons.background_radiant }
 			]
 			const componentsDire = [
 				{ image: Icons.icon_tormentor },
-				{ text: Menu.Localization.Localize("Tormentor spawned!") }
+				{ text: Menu.Localization.Localize("Tormentor spawned!") },
+				{ background: Icons.background_dire }
 			]
 			this.TrySendTormentorNotif(componentsRadiant, componentsDire)
 		}
 
 		if (this.menu.glyphState.value) {
+			const background =
+				LocalPlayer?.Team === 2 ? Icons.background_dire : Icons.background_radiant
 			this.TrySendGlyphNotif([
 				{ image: Icons.icon_tower },
-				{ text: Menu.Localization.Localize("Glyph avalibale") }
+				{ text: Menu.Localization.Localize("Glyph avalibale") },
+				{ background }
 			])
 		}
 
@@ -393,18 +399,23 @@ new (class CNotifications {
 				}
 
 				let runeName = ""
+				let back = "none"
 
 				if (rune instanceof RuneSpawnerPowerup) {
 					runeName = "Powerup"
 				} else if (rune instanceof RuneSpawnerBounty) {
 					runeName = "Bounty"
+					back = Icons.background_bounty
 				} else if (rune instanceof RuneSpawnerXP) {
 					runeName = "XP"
 				}
 
 				const components = [
 					{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
-					{ text: `${runeName} Rune ${Menu.Localization.Localize("spawned!")}` }
+					{
+						text: `${runeName} Rune ${Menu.Localization.Localize("spawned!")}`
+					},
+					{ background: back }
 				]
 
 				const componentsRemind = [
@@ -420,18 +431,19 @@ new (class CNotifications {
 	}
 
 	protected SendNotif(
-		components: { image?: string; text?: string }[],
+		components: { image?: string; text?: string; background?: string }[],
 		sound: string = ""
 	) {
 		NotificationsSDK.Push(new GameNotification(sound, components))
 	}
 
-	protected TrySendGlyphNotif(components: { image?: string; text?: string }[]) {
-		const isRadiant = LocalPlayer?.Team === 2
-
-		const enemyGlyphCooldown = isRadiant
-			? GameRules!.GlyphCooldownDire
-			: GameRules!.GlyphCooldownRadiant
+	protected TrySendGlyphNotif(
+		components: { image?: string; text?: string; background?: string }[]
+	) {
+		const enemyGlyphCooldown =
+			LocalPlayer?.Team === 2
+				? GameRules!.GlyphCooldownDire
+				: GameRules!.GlyphCooldownRadiant
 
 		if (this.isGlyphCooldowned(enemyGlyphCooldown)) {
 			this.SendNotif(components)
@@ -441,8 +453,8 @@ new (class CNotifications {
 	}
 
 	protected TrySendTormentorNotif(
-		componentsRadiant: { image?: string; text?: string }[],
-		componentsDire: { image?: string; text?: string }[]
+		componentsRadiant: { image?: string; text?: string; background?: string }[],
+		componentsDire: { image?: string; text?: string; background?: string }[]
 	) {
 		if (
 			this.tormentorSpawnerRadiant === undefined ||
@@ -466,9 +478,42 @@ new (class CNotifications {
 			this.tormentorSpawnerDire.SpawnOnce = true
 			this.SendNotif(componentsDire, "other")
 		}
+
+		if (
+			this.tormentorSpawnerRadiant.Remaining >
+				this.menu.tormentorRemindRange.value &&
+			this.tormentorSpawnerRadiant.Remaining <
+				this.menu.tormentorRemindRange.value + 0.05
+		) {
+			const remindRadiantComponets = [
+				{ image: Icons.icon_tormentor },
+				{
+					text: `${Menu.Localization.Localize("To tormentors:")} ${this.menu.tormentorRemindRange.value}${Menu.Localization.Localize("s")}`
+				},
+				{ background: Icons.background_radiant }
+			]
+			this.SendNotif(remindRadiantComponets, "other")
+		}
+
+		if (
+			this.tormentorSpawnerDire.Remaining > this.menu.tormentorRemindRange.value &&
+			this.tormentorSpawnerDire.Remaining <
+				this.menu.tormentorRemindRange.value + 0.05
+		) {
+			const remindDireComponets = [
+				{ image: Icons.icon_tormentor },
+				{
+					text: `${Menu.Localization.Localize("To tormentors:")} ${this.menu.tormentorRemindRange.value}${Menu.Localization.Localize("s")}`
+				},
+				{ background: Icons.background_radiant }
+			]
+			this.SendNotif(remindDireComponets, "other")
+		}
 	}
 
-	protected TrySendLotusNotif(components: { image?: string; text?: string }[]) {
+	protected TrySendLotusNotif(
+		components: { image?: string; text?: string; background?: string }[]
+	) {
 		if (
 			this.lotusSpawnerRadiant === undefined ||
 			this.lotusSpawnerDire === undefined ||
@@ -520,7 +565,7 @@ new (class CNotifications {
 					image: Icons.icon_lotus
 				},
 				{
-					text: `${Menu.Localization.Localize("To lotuses:")} ${this.menu.lotusRemindRange.value}s`
+					text: `${Menu.Localization.Localize("To lotuses:")} ${this.menu.lotusRemindRange.value}${Menu.Localization.Localize("s")}`
 				}
 			]
 			this.SendNotif(componentRemind, "other")
@@ -528,8 +573,8 @@ new (class CNotifications {
 	}
 
 	protected TrySendRuneNotif(
-		components: { image?: string; text?: string }[],
-		componentsRemind: { image?: string; text?: string }[],
+		components: { image?: string; text?: string; background?: string }[],
+		componentsRemind: { image?: string; text?: string; background?: string }[],
 		rune: RuneSpawner
 	) {
 		if (

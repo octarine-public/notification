@@ -8,14 +8,17 @@ import {
 } from "github.com/octarine-public/wrapper/index"
 
 export class GameNotification extends Notification {
-	private readonly components: { image?: string; text?: string }[]
+	private readonly components: { image?: string; text?: string; background?: string }[]
 	private readonly minWidth = 12
 	private readonly maxWidth = 20
 	private readonly minFontSize = 8
 	private readonly maxFontSize = 20
 	private readonly scaleFactor = 0.4
 
-	constructor(playSoundName: string, components: { image?: string; text?: string }[]) {
+	constructor(
+		playSoundName: string,
+		components: { image?: string; text?: string; background?: string }[]
+	) {
 		super({ playSoundName, timeToShow: 5000 })
 		this.components = components
 	}
@@ -46,9 +49,13 @@ export class GameNotification extends Notification {
 		)
 
 		if (
-			this.components.length === 2 &&
-			this.components[0].image &&
-			this.components[1].text
+			(this.components.length === 2 &&
+				this.components[0].image &&
+				this.components[1].text) ||
+			(this.components.length === 3 &&
+				this.components[0].image &&
+				this.components[1].text &&
+				this.components[2].background)
 		) {
 			this.drawImageAndText(notificationSize, componentSize, alpha)
 		} else if (
@@ -66,19 +73,33 @@ export class GameNotification extends Notification {
 		componentSize: Rectangle,
 		alpha: Color
 	) {
-		const [imageComponent, textComponent] = this.components
+		const [imageComponent, textComponent, background] = this.components
 
 		const imageSize = this.getImageSize(notificationSize)
 		const imagePosition = notificationSize.Clone()
 		imagePosition.Width = imageSize.Width
 		imagePosition.Height = imageSize.Height
+		imagePosition.x += imageSize.Width * 0.2
 		imagePosition.y += (notificationSize.Height - imageSize.Height) / 2
-		imagePosition.x += 8
 
 		const textPosition = notificationSize.Clone()
 		textPosition.Width = notificationSize.Width - (imageSize.Width + 8) * 2
 		textPosition.x += imageSize.Width + 12
 		textPosition.y += notificationSize.Height / 2 - 6
+
+		const backPosition = notificationSize.Clone()
+		backPosition.Width = notificationSize.Width / 5
+		backPosition.Height = notificationSize.Height
+
+		if (background && background.background !== "none") {
+			RendererSDK.Image(
+				background.background!,
+				backPosition.pos1,
+				-1,
+				backPosition.Size,
+				alpha
+			)
+		}
 
 		RendererSDK.Image(
 			imageComponent.image!,
@@ -94,9 +115,7 @@ export class GameNotification extends Notification {
 			Color.White,
 			RendererSDK.DefaultFontName,
 			this.getFontSize(componentSize),
-			18,
-			false,
-			false
+			18
 		)
 	}
 
@@ -155,9 +174,7 @@ export class GameNotification extends Notification {
 			Color.White,
 			RendererSDK.DefaultFontName,
 			this.getFontSize(componentSize),
-			16,
-			false,
-			false
+			18
 		)
 	}
 
