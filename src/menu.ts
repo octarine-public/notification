@@ -58,11 +58,13 @@ export class MenuManager {
 
 	public readonly lotusTree: Menu.Node
 	public readonly lotusState: Menu.Toggle
+	public readonly lotusRemindState: Menu.Toggle
 	public readonly lotusNumsRange: Menu.Slider
 	public readonly lotusRemindRange: Menu.Slider
 
 	public readonly tormentorTree: Menu.Node
 	public readonly tormentorState: Menu.Toggle
+	public readonly tormentorRemindState: Menu.Toggle
 	public readonly tormentorRemindRange: Menu.Slider
 
 	constructor() {
@@ -124,6 +126,7 @@ export class MenuManager {
 
 		this.lotusTree = this.tree.AddNode("Lotuses")
 		this.lotusState = this.lotusTree.AddToggle("Notifications", true, "", -1)
+		this.lotusRemindState = this.lotusTree.AddToggle("Remind", true, "", 1)
 		this.lotusNumsRange = this.lotusTree.AddSlider(
 			"Notify me when more than",
 			0,
@@ -145,6 +148,7 @@ export class MenuManager {
 
 		this.tormentorTree = this.tree.AddNode("Tormentors")
 		this.tormentorState = this.tormentorTree.AddToggle("Notifications", true)
+		this.tormentorRemindState = this.tormentorTree.AddToggle("Remind", true, "", 1)
 		this.tormentorRemindRange = this.tormentorTree.AddSlider(
 			"Remind before",
 			40,

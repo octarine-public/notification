@@ -9,7 +9,7 @@ import {
 
 export class GameNotification extends Notification {
 	private readonly components: { image?: string; text?: string; background?: string }[]
-	private readonly minWidth = 12
+	private readonly minWidth = 8
 	private readonly maxWidth = 20
 	private readonly minFontSize = 8
 	private readonly maxFontSize = 20

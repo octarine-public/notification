@@ -480,10 +480,10 @@ new (class CNotifications {
 		}
 
 		if (
-			this.tormentorSpawnerRadiant.Remaining >
-				this.menu.tormentorRemindRange.value &&
-			this.tormentorSpawnerRadiant.Remaining <
-				this.menu.tormentorRemindRange.value + 0.05
+			this.menu.tormentorRemindState.value &&
+			this.tormentorSpawnerRadiant.IsTimeForNotif(
+				this.menu.tormentorRemindRange.value
+			)
 		) {
 			const remindRadiantComponets = [
 				{ image: Icons.icon_tormentor },
@@ -496,16 +496,15 @@ new (class CNotifications {
 		}
 
 		if (
-			this.tormentorSpawnerDire.Remaining > this.menu.tormentorRemindRange.value &&
-			this.tormentorSpawnerDire.Remaining <
-				this.menu.tormentorRemindRange.value + 0.05
+			this.menu.tormentorRemindState.value &&
+			this.tormentorSpawnerDire.IsTimeForNotif(this.menu.tormentorRemindRange.value)
 		) {
 			const remindDireComponets = [
 				{ image: Icons.icon_tormentor },
 				{
 					text: `${Menu.Localization.Localize("To tormentors:")} ${this.menu.tormentorRemindRange.value}${Menu.Localization.Localize("s")}`
 				},
-				{ background: Icons.background_radiant }
+				{ background: Icons.background_dire }
 			]
 			this.SendNotif(remindDireComponets, "other")
 		}
@@ -550,15 +549,16 @@ new (class CNotifications {
 		}
 
 		if (
-			(this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
+			this.menu.lotusRemindState.value &&
+			((this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
 				this.lotusSpawnerDire.RemainingTime > this.menu.lotusRemindRange.value &&
 				this.lotusSpawnerDire.RemainingTime <
 					this.menu.lotusRemindRange.value + 0.05) ||
-			(this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
-				this.lotusSpawnerRadiant.RemainingTime >
-					this.menu.lotusRemindRange.value &&
-				this.lotusSpawnerRadiant.RemainingTime <
-					this.menu.lotusRemindRange.value + 0.05)
+				(this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
+					this.lotusSpawnerRadiant.RemainingTime >
+						this.menu.lotusRemindRange.value &&
+					this.lotusSpawnerRadiant.RemainingTime <
+						this.menu.lotusRemindRange.value + 0.05))
 		) {
 			const componentRemind = [
 				{

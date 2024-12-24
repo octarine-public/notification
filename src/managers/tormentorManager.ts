@@ -68,6 +68,13 @@ export class TormentorManager {
 		this.NextSpawnTime = currentTime + this.SpawnTime
 	}
 
+	public IsTimeForNotif(remindBefore: number): boolean {
+		return (
+			this.NextSpawnTime - this.GameTime > remindBefore &&
+			this.NextSpawnTime - this.GameTime < remindBefore + 0.05
+		)
+	}
+
 	public get IsTormentorAlive(): boolean {
 		return this.GameTime >= this.NextSpawnTime
 	}
