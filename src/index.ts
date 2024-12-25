@@ -47,9 +47,14 @@ new (class CNotifications {
 	private readonly menu = new MenuManager()
 	private readonly towerManager = new towerManager()
 
-	private runeSpawnerPowerup: Nullable<RuneSpawnerPowerup>
-	private runeSpawnerBounty: Nullable<RuneSpawnerBounty>
-	private runeSpawnerXp: Nullable<RuneSpawnerXP>
+	private runeSpawnerPowerupTop: Nullable<RuneSpawnerPowerup>
+	private runeSpawnerPowerupBottom: Nullable<RuneSpawnerPowerup>
+
+	private runeSpawnerBountyRadiant: Nullable<RuneSpawnerBounty>
+	private runeSpawnerBountyDire: Nullable<RuneSpawnerBounty>
+
+	private runeSpawnerXpRadiant: Nullable<RuneSpawnerXP>
+	private runeSpawnerXpDire: Nullable<RuneSpawnerXP>
 
 	private tormentorSpawnerRadiant: Nullable<TormentorManager>
 	private tormentorSpawnerDire: Nullable<TormentorManager>
@@ -161,7 +166,8 @@ new (class CNotifications {
 						image: ImageData.GetHeroTexture(unit.Name, false)
 					},
 					{ text: Menu.Localization.Localize("Stole") },
-					{ image: ImageData.GetSpellTexture(spell.Name) }
+					{ image: ImageData.GetSpellTexture(spell.Name) },
+					{ text: spell.Name }
 				])
 			})
 		}
@@ -219,11 +225,23 @@ new (class CNotifications {
 				this.tormentorSpawnerDire = new TormentorManager(entity)
 			}
 		} else if (entity instanceof RuneSpawnerPowerup) {
-			this.runeSpawnerPowerup = entity
+			if (entity.SpawnPosition.x < 0) {
+				this.runeSpawnerPowerupTop = entity
+			} else if (entity.SpawnPosition.x > 0) {
+				this.runeSpawnerPowerupBottom = entity
+			}
 		} else if (entity instanceof RuneSpawnerBounty) {
-			this.runeSpawnerBounty = entity
+			if (entity.SpawnPosition.x < 0) {
+				this.runeSpawnerBountyRadiant = entity
+			} else if (entity.SpawnPosition.x > 0) {
+				this.runeSpawnerBountyDire = entity
+			}
 		} else if (entity instanceof RuneSpawnerXP) {
-			this.runeSpawnerXp = entity
+			if (entity.SpawnPosition.x < 0) {
+				this.runeSpawnerXpRadiant = entity
+			} else if (entity.SpawnPosition.x > 0) {
+				this.runeSpawnerXpDire = entity
+			}
 		} else if (entity instanceof Tower) {
 			this.towerManager.Add(entity)
 		} else if (entity instanceof MangoTree) {
@@ -248,11 +266,23 @@ new (class CNotifications {
 				this.tormentorSpawnerDire = undefined
 			}
 		} else if (entity instanceof RuneSpawnerPowerup) {
-			this.runeSpawnerPowerup = undefined
+			if (entity.SpawnPosition.x < 0) {
+				this.runeSpawnerPowerupTop = undefined
+			} else if (entity.SpawnPosition.x > 0) {
+				this.runeSpawnerPowerupBottom = undefined
+			}
 		} else if (entity instanceof RuneSpawnerBounty) {
-			this.runeSpawnerBounty = undefined
+			if (entity.SpawnPosition.x < 0) {
+				this.runeSpawnerBountyRadiant = undefined
+			} else if (entity.SpawnPosition.x > 0) {
+				this.runeSpawnerBountyDire = undefined
+			}
 		} else if (entity instanceof RuneSpawnerXP) {
-			this.runeSpawnerXp = undefined
+			if (entity.SpawnPosition.x < 0) {
+				this.runeSpawnerXpRadiant = undefined
+			} else if (entity.SpawnPosition.x > 0) {
+				this.runeSpawnerXpDire = undefined
+			}
 		} else if (entity instanceof MangoTree) {
 			if (entity.SpawnPosition.x < 0) {
 				this.lotusSpawnerRadiant = undefined
@@ -278,20 +308,24 @@ new (class CNotifications {
 		}
 
 		if (ability.CooldownPercent === 100 && this.menu.spellUsedState.value) {
+			const parsedName = this.parseName(ability.Name)
 			this.SendNotif([
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
 				},
 				{ text: Menu.Localization.Localize("Used") },
-				{ image: ImageData.GetSpellTexture(ability.Name) }
+				{ image: ImageData.GetSpellTexture(ability.Name) },
+				{ text: parsedName }
 			])
 		} else if (ability.CooldownPercent === 0 && this.menu.spellReadyState.value) {
+			const parsedName = this.parseName(ability.Name)
 			this.SendNotif([
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
 				},
 				{ text: Menu.Localization.Localize("Available") },
-				{ image: ImageData.GetSpellTexture(ability.Name) }
+				{ image: ImageData.GetSpellTexture(ability.Name) },
+				{ text: parsedName }
 			])
 		}
 	}
@@ -324,10 +358,12 @@ new (class CNotifications {
 						this.menu.itemsState.IsEnabled(newItem.Name) ||
 						newItem.AbilityData.Cost >= this.menu.notifCostRange.value
 					) {
+						const parsedName = this.parseName(newItem.Name)
 						this.SendNotif([
 							{ image: ImageData.GetHeroTexture(unit.Name, false) },
 							{ text: Menu.Localization.Localize("Bought") },
-							{ image: ImageData.GetItemTexture(newItem.Name) }
+							{ image: ImageData.GetItemTexture(newItem.Name) },
+							{ text: parsedName }
 						])
 					}
 				})
@@ -390,39 +426,53 @@ new (class CNotifications {
 			}
 
 			for (const rune of [
-				this.runeSpawnerPowerup,
-				this.runeSpawnerBounty,
-				this.runeSpawnerXp
+				this.runeSpawnerPowerupTop,
+				this.runeSpawnerPowerupBottom,
+				this.runeSpawnerBountyRadiant,
+				this.runeSpawnerBountyDire,
+				this.runeSpawnerXpRadiant,
+				this.runeSpawnerXpDire
 			] as const) {
 				if (rune === undefined) {
 					break
 				}
 
-				let runeName = ""
 				let back = "none"
+				let runeImg = ImageData.GetRuneTexture(RuneTextures[rune.Name])
+				let text = ""
+				let textRemind = ""
 
 				if (rune instanceof RuneSpawnerPowerup) {
-					runeName = "Powerup"
-				} else if (rune instanceof RuneSpawnerBounty) {
-					runeName = "Bounty"
+					runeImg = Icons.icon_rune
+					const pos =
+						rune.SpawnPosition.x < 0 && rune.WillSpawnNextPowerRune
+							? "top"
+							: "bottom"
+					text = `Powerup Rune ${Menu.Localization.Localize("spawned!")}`
+					if (rune.WillSpawnNextPowerRune) {
+						textRemind = `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} ${Menu.Localization.Localize(`at ${pos}`)}`
+					}
+				} else if (
+					rune instanceof RuneSpawnerBounty &&
+					rune.SpawnPosition.x > 0
+				) {
 					back = Icons.background_bounty
-				} else if (rune instanceof RuneSpawnerXP) {
-					runeName = "XP"
+					text = `Bounty Rune ${Menu.Localization.Localize("spawned!")}`
+					textRemind = `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} `
+				} else if (rune instanceof RuneSpawnerXP && rune.SpawnPosition.x > 0) {
+					text = `XP Rune ${Menu.Localization.Localize("spawned!")}`
+					textRemind = `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} `
 				}
 
-				const components = [
-					{ image: ImageData.GetRuneTexture(RuneTextures[rune.Name]) },
-					{
-						text: `${runeName} Rune ${Menu.Localization.Localize("spawned!")}`
-					},
-					{ background: back }
-				]
+				if (text === "" && textRemind === "") {
+					break
+				}
+
+				const components = [{ image: runeImg }, { text }, { background: back }]
 
 				const componentsRemind = [
 					{ image: Icons.icon_rune },
-					{
-						text: `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}s`
-					}
+					{ text: textRemind }
 				]
 
 				this.TrySendRuneNotif(components, componentsRemind, rune)
@@ -588,7 +638,8 @@ new (class CNotifications {
 			rune.Remaining > this.menu.runeRemindRange.value &&
 			rune.Remaining < this.menu.runeRemindRange.value + 0.05 &&
 			this.menu.runeRemindState.value &&
-			GameRules!.GameTime > 0
+			GameRules!.GameTime > 0 &&
+			componentsRemind[1].text !== ""
 		) {
 			this.SendNotif(componentsRemind)
 		}
@@ -618,5 +669,11 @@ new (class CNotifications {
 			return true
 		}
 		return false
+	}
+
+	private parseName(name: string): string {
+		const itemArray = name.split("_")
+		itemArray.shift()
+		return itemArray.join(" ")
 	}
 })()

@@ -9,11 +9,10 @@ import {
 
 export class GameNotification extends Notification {
 	private readonly components: { image?: string; text?: string; background?: string }[]
-	private readonly minWidth = 8
-	private readonly maxWidth = 20
+	private readonly minWidth = 166
+	private readonly maxWidth = 312
 	private readonly minFontSize = 8
 	private readonly maxFontSize = 20
-	private readonly scaleFactor = 0.4
 
 	constructor(
 		playSoundName: string,
@@ -38,7 +37,6 @@ export class GameNotification extends Notification {
 
 		const alpha = Color.White.SetA(this.Opacity)
 		const notificationSize = this.getNotificationSize(position)
-		const componentSize = this.getComponentSize(notificationSize)
 
 		RendererSDK.Image(
 			this.BackgroundCover,
@@ -57,34 +55,101 @@ export class GameNotification extends Notification {
 				this.components[1].text &&
 				this.components[2].background)
 		) {
-			this.drawImageAndText(notificationSize, componentSize, alpha)
+			this.drawImageAndText(notificationSize, alpha)
 		} else if (
 			this.components.length === 3 &&
 			this.components[0].image &&
 			this.components[1].text &&
 			this.components[2].image
 		) {
-			this.drawImageTextImage(notificationSize, componentSize, alpha)
+			this.drawImageTextImage(notificationSize, alpha)
+		} else if (
+			this.components.length === 4 &&
+			this.components[0].image &&
+			this.components[1].text &&
+			this.components[2].image &&
+			this.components[3].text
+		) {
+			this.drawImageTextImageText(notificationSize, alpha)
 		}
 	}
 
-	private drawImageAndText(
-		notificationSize: Rectangle,
-		componentSize: Rectangle,
-		alpha: Color
-	) {
+	private drawImageTextImageText(notificationSize: Rectangle, alpha: Color) {
+		const [image1, text1, image2, text2] = this.components
+
+		const imageSize = this.getImageSize(notificationSize)
+		const componetsMargin = this.getComponentsMargin(notificationSize)
+		const text1Content = text1.text!
+		const letterWidth = this.getLetterWidth(notificationSize)
+		const lowLetters = this.countLowLetters(text1Content)
+		const imagesMargin = imageSize.Width * 0.2
+
+		const image1Position = notificationSize.Clone()
+		image1Position.Width = imageSize.Width
+		image1Position.Height = imageSize.Height
+		image1Position.x += imagesMargin
+		image1Position.y += (notificationSize.Height - imageSize.Height) / 2
+
+		const text1Position = notificationSize.Clone()
+		text1Position.Width = letterWidth * (text1Content.length - lowLetters)
+		text1Position.x = image1Position.x + image1Position.Width + componetsMargin
+		text1Position.y += notificationSize.Height / 2 - 6
+
+		const image2Position = notificationSize.Clone()
+		image2Position.Width = imageSize.Width
+		image2Position.Height = imageSize.Height
+		image2Position.x = text1Position.x + text1Position.Width + componetsMargin
+		image2Position.y += (notificationSize.Height - imageSize.Height) / 2
+
+		const text2Position = notificationSize.Clone()
+		text2Position.Width =
+			notificationSize.Width -
+			(image1Position.Width + text1Position.Width + image2Position.Width)
+		text2Position.x = image2Position.x + image2Position.Width + componetsMargin
+		text2Position.y += notificationSize.Height / 2 - 6
+
+		RendererSDK.Image(image1.image!, image1Position.pos1, -1, imageSize.Size, alpha)
+
+		RendererSDK.Text(
+			text1.text!,
+			text1Position.pos1,
+			Color.White,
+			RendererSDK.DefaultFontName,
+			this.getFontSize(notificationSize),
+			18
+		)
+
+		RendererSDK.Image(image2.image!, image2Position.pos1, -1, imageSize.Size, alpha)
+
+		RendererSDK.Text(
+			text2.text!,
+			text2Position.pos1,
+			Color.White,
+			RendererSDK.DefaultFontName,
+			this.getFontSize(notificationSize),
+			18
+		)
+	}
+
+	private drawImageAndText(notificationSize: Rectangle, alpha: Color) {
 		const [imageComponent, textComponent, background] = this.components
 
 		const imageSize = this.getImageSize(notificationSize)
+		const imagesMargin = imageSize.Width * 0.2
+		const componetsMargin = this.getComponentsMargin(notificationSize)
+		const letterWidth = this.getLetterWidth(notificationSize)
+		const text = textComponent.text!
+		const lowLetters = this.countLowLetters(text)
+
 		const imagePosition = notificationSize.Clone()
 		imagePosition.Width = imageSize.Width
 		imagePosition.Height = imageSize.Height
-		imagePosition.x += imageSize.Width * 0.2
+		imagePosition.x += imagesMargin + componetsMargin
 		imagePosition.y += (notificationSize.Height - imageSize.Height) / 2
 
 		const textPosition = notificationSize.Clone()
-		textPosition.Width = notificationSize.Width - (imageSize.Width + 8) * 2
-		textPosition.x += imageSize.Width + 12
+		textPosition.Width = letterWidth * (text.length - lowLetters)
+		textPosition.x = imagePosition.x + imagePosition.Height + componetsMargin
 		textPosition.y += notificationSize.Height / 2 - 6
 
 		const backPosition = notificationSize.Clone()
@@ -114,22 +179,20 @@ export class GameNotification extends Notification {
 			textPosition.pos1,
 			Color.White,
 			RendererSDK.DefaultFontName,
-			this.getFontSize(componentSize),
+			this.getFontSize(notificationSize),
 			18
 		)
 	}
 
-	private drawImageTextImage(
-		notificationSize: Rectangle,
-		componentSize: Rectangle,
-		alpha: Color
-	) {
+	private drawImageTextImage(notificationSize: Rectangle, alpha: Color) {
 		const [leftImageComponent, textComponent, rightImageComponent] = this.components
 
 		const imageSize = this.getImageSize(notificationSize)
-
 		const leftPadding = imageSize.Width * 0.2
-		const rightPadding = imageSize.Width * 0.6
+		const componetsMargin = this.getComponentsMargin(notificationSize)
+		const letterWidth = this.getLetterWidth(notificationSize)
+		const text = textComponent.text!
+		const lowLetters = this.countLowLetters(text)
 
 		const leftImagePosition = notificationSize.Clone()
 		leftImagePosition.Width = imageSize.Width
@@ -137,20 +200,13 @@ export class GameNotification extends Notification {
 		leftImagePosition.x += leftPadding
 		leftImagePosition.y += (notificationSize.Height - imageSize.Height) / 2
 
-		const textPosition = leftImagePosition.Clone()
-		textPosition.Width =
-			notificationSize.Width -
-			(imageSize.Width + leftPadding + 8 + (imageSize.Width + rightPadding))
-		textPosition.x += leftImagePosition.Width + 8
-		textPosition.y += notificationSize.Height / 2 - imageSize.Height * 0.5
-
-		if (textComponent.text!.length <= 8) {
-			textPosition.x += textPosition.Width / 3 - textComponent.text!.length * 2
-		}
+		const textPosition = notificationSize.Clone()
+		textPosition.Width = letterWidth * (text.length - lowLetters)
+		textPosition.x = leftImagePosition.x + leftImagePosition.Width + componetsMargin
+		textPosition.y += notificationSize.Height / 2 - 6
 
 		const rightImagePosition = leftImagePosition.Clone()
-		rightImagePosition.x =
-			notificationSize.x + notificationSize.Width - (imageSize.Width + rightPadding)
+		rightImagePosition.x = textPosition.x + textPosition.Width + componetsMargin
 
 		RendererSDK.Image(
 			leftImageComponent.image!,
@@ -173,14 +229,14 @@ export class GameNotification extends Notification {
 			textPosition.pos1,
 			Color.White,
 			RendererSDK.DefaultFontName,
-			this.getFontSize(componentSize),
+			this.getFontSize(notificationSize),
 			18
 		)
 	}
 
 	private getImageSize(notificationSize: Rectangle): Rectangle {
 		const result = notificationSize.Clone()
-		result.Height = (2 / 3) * notificationSize.Height
+		result.Height = (2 / 3) * notificationSize.Height - 4
 		result.Width = result.Height
 		return result
 	}
@@ -188,13 +244,6 @@ export class GameNotification extends Notification {
 	private getNotificationSize(position: Rectangle): Rectangle {
 		const result = position.Clone()
 		result.Width = position.Width + 20
-		return result
-	}
-
-	private getComponentSize(notifSize: Rectangle): Rectangle {
-		const result = notifSize.Clone()
-		result.Width = (notifSize.Width / 6) * this.scaleFactor
-		result.Height = notifSize.Height * this.scaleFactor
 		return result
 	}
 
@@ -213,5 +262,27 @@ export class GameNotification extends Notification {
 		return Math.round(
 			this.minFontSize + scale * (this.maxFontSize - this.minFontSize)
 		)
+	}
+
+	private getComponentsMargin(componentSize: Rectangle): number {
+		const baseMargin = this.maxWidth * 0.02
+		const scale = componentSize.Width / this.maxWidth
+		return baseMargin * scale
+	}
+
+	private getLetterWidth(componentSize: Rectangle): number {
+		const baseWidth = this.maxWidth * 0.04
+		const scale = componentSize.Width / this.maxWidth
+		return Math.floor(baseWidth * scale)
+	}
+
+	private countLowLetters(text: string) {
+		let count = 0
+		for (let i = 0; i < text.length; i++) {
+			if (text[i] === "l" || text[i] === "i") {
+				count++
+			}
+		}
+		return count / 1.5
 	}
 }
