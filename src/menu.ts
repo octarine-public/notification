@@ -130,8 +130,8 @@ export class MenuManager {
 		this.lotusNumsRange = this.lotusTree.AddSlider(
 			"Notify me when more than",
 			0,
-			1,
-			6,
+			0,
+			5,
 			0,
 			"",
 			2

@@ -42,7 +42,6 @@ interface IHeroesItems {
 	items: Item[]
 }
 
-// TODO: CLEANUP
 new (class CNotifications {
 	private readonly menu = new MenuManager()
 	private readonly towerManager = new towerManager()
@@ -61,8 +60,6 @@ new (class CNotifications {
 
 	private readonly heroesData: IHeroesItems[] = []
 	private enemyGlyphCooldown = 0
-
-	private readonly modifierRadarName = "modifier_radar_thinker"
 
 	private lotusSpawnerRadiant: Nullable<lotusManager>
 	private lotusSpawnerDire: Nullable<lotusManager>
@@ -118,22 +115,26 @@ new (class CNotifications {
 			}
 
 			const parts = TowerName.split("_")
-
-			// [team, posName (ex.T2), lane]
-			const towerData = [parts[2], "T" + parts[3].replace(/\D/g, ""), parts[4]]
-			if (towerData[2] === undefined) {
-				towerData[2] = "base"
+			const towerData = [parts[2], "t" + parts[3].replace(/\D/g, ""), parts[4]]
+			if (towerData[1] === undefined) {
+				towerData[1] = "t4"
 			}
 
-			this.SendNotif([
+			const towerTeam =
+				LocalPlayer?.Team === 2 ? Icons.background_dire : Icons.background_radiant
+
+			const componets = [
 				{
 					image: ImageData.GetHeroTexture(
 						order.Ability_.OwnerEntity.Name,
 						false
 					)
 				},
-				{ text: `TP ${towerData[1]} ${towerData[2]}!` }
-			])
+				{ text: Menu.Localization.Localize("teleporting") },
+				{ text: `${towerData[1]}\n${towerData[2]}` },
+				{ background: towerTeam }
+			]
+			this.SendNotif(componets)
 		}
 	}
 
@@ -161,31 +162,33 @@ new (class CNotifications {
 				) {
 					return
 				}
-				this.SendNotif([
+				const componets = [
 					{
 						image: ImageData.GetHeroTexture(unit.Name, false)
 					},
 					{ text: Menu.Localization.Localize("Stole") },
 					{ image: ImageData.GetSpellTexture(spell.Name) },
 					{ text: spell.Name }
-				])
+				]
+				this.SendNotif(componets)
 			})
 		}
 	}
 
 	protected ModifierCreated(modifier: Modifier) {
 		if (
-			modifier.Name === this.modifierRadarName &&
+			modifier.Name === "modifier_radar_thinker" &&
 			modifier.Caster !== undefined &&
 			modifier.Caster.IsEnemy() &&
 			modifier.IsValid &&
 			this.menu.scanState.value
 		) {
-			this.SendNotif([
+			const componets = [
 				{ image: ImageData.GetHeroTexture(modifier.Caster.Name) },
 				{ text: Menu.Localization.Localize("Scanned") },
 				{ image: Icons.icon_radar }
-			])
+			]
+			this.SendNotif(componets)
 		}
 
 		if (
@@ -309,24 +312,26 @@ new (class CNotifications {
 
 		if (ability.CooldownPercent === 100 && this.menu.spellUsedState.value) {
 			const parsedName = this.parseName(ability.Name)
-			this.SendNotif([
+			const components = [
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
 				},
 				{ text: Menu.Localization.Localize("Used") },
 				{ image: ImageData.GetSpellTexture(ability.Name) },
 				{ text: parsedName }
-			])
+			]
+			this.SendNotif(components)
 		} else if (ability.CooldownPercent === 0 && this.menu.spellReadyState.value) {
 			const parsedName = this.parseName(ability.Name)
-			this.SendNotif([
+			const components = [
 				{
 					image: ImageData.GetHeroTexture(ability.OwnerEntity.Name, false)
 				},
 				{ text: Menu.Localization.Localize("Available") },
 				{ image: ImageData.GetSpellTexture(ability.Name) },
 				{ text: parsedName }
-			])
+			]
+			this.SendNotif(components)
 		}
 	}
 
@@ -359,12 +364,13 @@ new (class CNotifications {
 						newItem.AbilityData.Cost >= this.menu.notifCostRange.value
 					) {
 						const parsedName = this.parseName(newItem.Name)
-						this.SendNotif([
+						const components = [
 							{ image: ImageData.GetHeroTexture(unit.Name, false) },
 							{ text: Menu.Localization.Localize("Bought") },
 							{ image: ImageData.GetItemTexture(newItem.Name) },
 							{ text: parsedName }
-						])
+						]
+						this.SendNotif(components)
 					}
 				})
 			}
@@ -378,7 +384,8 @@ new (class CNotifications {
 			dt === 0 ||
 			!this.menu.State.value ||
 			GameRules === undefined ||
-			LocalPlayer === undefined
+			LocalPlayer === undefined ||
+			GameRules.GameTime < 0
 		) {
 			return
 		}
@@ -390,8 +397,18 @@ new (class CNotifications {
 					text: Menu.Localization.Localize("Lotuses spawned!")
 				}
 			]
+			const componentRemind = [
+				{
+					image: Icons.icon_lotus
+				},
+				{
+					text:
+						`${Menu.Localization.Localize("To lotuses:")} ` +
+						`${this.menu.lotusRemindRange.value}${Menu.Localization.Localize("s")}`
+				}
+			]
 
-			this.TrySendLotusNotif(components)
+			this.TrySendLotusNotif(components, componentRemind)
 		}
 
 		if (this.menu.tormentorState.value) {
@@ -405,12 +422,37 @@ new (class CNotifications {
 				{ text: Menu.Localization.Localize("Tormentor spawned!") },
 				{ background: Icons.background_dire }
 			]
-			this.TrySendTormentorNotif(componentsRadiant, componentsDire)
+			const componentRemindRadiant = [
+				{ image: Icons.icon_tormentor },
+				{
+					text:
+						`${Menu.Localization.Localize("To tormentors:")} ` +
+						`${this.menu.tormentorRemindRange.value}${Menu.Localization.Localize("s")}`
+				},
+				{ background: Icons.background_radiant }
+			]
+			const componentRemindDire = [
+				{ image: Icons.icon_tormentor },
+				{
+					text:
+						`${Menu.Localization.Localize("To tormentors:")} ` +
+						`${this.menu.tormentorRemindRange.value}${Menu.Localization.Localize("s")}`
+				},
+				{ background: Icons.background_dire }
+			]
+
+			this.TrySendTormentorNotif(
+				componentsRadiant,
+				componentsDire,
+				componentRemindRadiant,
+				componentRemindDire
+			)
 		}
 
 		if (this.menu.glyphState.value) {
 			const background =
 				LocalPlayer?.Team === 2 ? Icons.background_dire : Icons.background_radiant
+
 			this.TrySendGlyphNotif([
 				{ image: Icons.icon_tower },
 				{ text: Menu.Localization.Localize("Glyph avalibale") },
@@ -449,8 +491,12 @@ new (class CNotifications {
 							? "top"
 							: "bottom"
 					text = `Powerup Rune ${Menu.Localization.Localize("spawned!")}`
+
 					if (rune.WillSpawnNextPowerRune) {
-						textRemind = `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} ${Menu.Localization.Localize(`at ${pos}`)}`
+						textRemind =
+							`${Menu.Localization.Localize("To rune:")} ` +
+							`${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} ` +
+							`${Menu.Localization.Localize(`at ${pos}`)}`
 					}
 				} else if (
 					rune instanceof RuneSpawnerBounty &&
@@ -458,10 +504,14 @@ new (class CNotifications {
 				) {
 					back = Icons.background_bounty
 					text = `Bounty Rune ${Menu.Localization.Localize("spawned!")}`
-					textRemind = `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} `
+					textRemind =
+						`${Menu.Localization.Localize("To rune:")} ` +
+						`${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} `
 				} else if (rune instanceof RuneSpawnerXP && rune.SpawnPosition.x > 0) {
 					text = `XP Rune ${Menu.Localization.Localize("spawned!")}`
-					textRemind = `${Menu.Localization.Localize("To rune:")} ${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} `
+					textRemind =
+						`${Menu.Localization.Localize("To rune:")} ` +
+						`${this.menu.runeRemindRange.value}${Menu.Localization.Localize("s")} `
 				}
 
 				if (text === "" && textRemind === "") {
@@ -469,7 +519,6 @@ new (class CNotifications {
 				}
 
 				const components = [{ image: runeImg }, { text }, { background: back }]
-
 				const componentsRemind = [
 					{ image: Icons.icon_rune },
 					{ text: textRemind }
@@ -504,7 +553,9 @@ new (class CNotifications {
 
 	protected TrySendTormentorNotif(
 		componentsRadiant: { image?: string; text?: string; background?: string }[],
-		componentsDire: { image?: string; text?: string; background?: string }[]
+		componentsDire: { image?: string; text?: string; background?: string }[],
+		componetsRemindRadiant: { image?: string; text?: string; background?: string }[],
+		componentsRemindDire: { image?: string; text?: string; background?: string }[]
 	) {
 		if (
 			this.tormentorSpawnerRadiant === undefined ||
@@ -513,20 +564,14 @@ new (class CNotifications {
 			return
 		}
 
-		if (
-			this.tormentorSpawnerRadiant.IsTormentorAlive &&
-			!this.tormentorSpawnerRadiant.SpawnOnce
-		) {
+		if (this.tormentorSpawnerRadiant.IsTimeForNotif()) {
 			this.tormentorSpawnerRadiant.SpawnOnce = true
-			this.SendNotif(componentsRadiant, "other")
+			this.SendNotif(componentsRadiant)
 		}
 
-		if (
-			this.tormentorSpawnerDire.IsTormentorAlive &&
-			!this.tormentorSpawnerDire.SpawnOnce
-		) {
+		if (this.tormentorSpawnerDire.IsTimeForNotif()) {
 			this.tormentorSpawnerDire.SpawnOnce = true
-			this.SendNotif(componentsDire, "other")
+			this.SendNotif(componentsDire)
 		}
 
 		if (
@@ -535,33 +580,20 @@ new (class CNotifications {
 				this.menu.tormentorRemindRange.value
 			)
 		) {
-			const remindRadiantComponets = [
-				{ image: Icons.icon_tormentor },
-				{
-					text: `${Menu.Localization.Localize("To tormentors:")} ${this.menu.tormentorRemindRange.value}${Menu.Localization.Localize("s")}`
-				},
-				{ background: Icons.background_radiant }
-			]
-			this.SendNotif(remindRadiantComponets, "other")
+			this.SendNotif(componetsRemindRadiant)
 		}
 
 		if (
 			this.menu.tormentorRemindState.value &&
 			this.tormentorSpawnerDire.IsTimeForNotif(this.menu.tormentorRemindRange.value)
 		) {
-			const remindDireComponets = [
-				{ image: Icons.icon_tormentor },
-				{
-					text: `${Menu.Localization.Localize("To tormentors:")} ${this.menu.tormentorRemindRange.value}${Menu.Localization.Localize("s")}`
-				},
-				{ background: Icons.background_dire }
-			]
-			this.SendNotif(remindDireComponets, "other")
+			this.SendNotif(componentsRemindDire)
 		}
 	}
 
 	protected TrySendLotusNotif(
-		components: { image?: string; text?: string; background?: string }[]
+		components: { image?: string; text?: string; background?: string }[],
+		componentsRemind: { image?: string; text?: string; background?: string }[]
 	) {
 		if (
 			this.lotusSpawnerRadiant === undefined ||
@@ -584,41 +616,31 @@ new (class CNotifications {
 
 		if (
 			this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
-			this.lotusSpawnerRadiant.RemainingTime > 0 &&
-			this.lotusSpawnerRadiant.RemainingTime < 0.05
+			this.lotusSpawnerRadiant.IsTimeForNotif()
 		) {
-			this.SendNotif(components, "other")
+			this.SendNotif(components)
 		}
 
 		if (
 			this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
-			this.lotusSpawnerDire.RemainingTime > 0 &&
-			this.lotusSpawnerDire.RemainingTime < 0.05
+			this.lotusSpawnerDire.IsTimeForNotif()
 		) {
-			this.SendNotif(components, "other")
+			this.SendNotif(components)
 		}
+
+		const CanNotifDirePool =
+			this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
+			this.lotusSpawnerDire.IsTimeForNotif(this.menu.lotusRemindRange.value)
+
+		const CanNotifRadiantPool =
+			this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
+			this.lotusSpawnerRadiant.IsTimeForNotif(this.menu.lotusRemindRange.value)
 
 		if (
 			this.menu.lotusRemindState.value &&
-			((this.menu.lotusNumsRange.value <= DireNumsOfLotuses &&
-				this.lotusSpawnerDire.RemainingTime > this.menu.lotusRemindRange.value &&
-				this.lotusSpawnerDire.RemainingTime <
-					this.menu.lotusRemindRange.value + 0.05) ||
-				(this.menu.lotusNumsRange.value <= RadiantNumOfLotuses &&
-					this.lotusSpawnerRadiant.RemainingTime >
-						this.menu.lotusRemindRange.value &&
-					this.lotusSpawnerRadiant.RemainingTime <
-						this.menu.lotusRemindRange.value + 0.05))
+			(CanNotifDirePool || CanNotifRadiantPool)
 		) {
-			const componentRemind = [
-				{
-					image: Icons.icon_lotus
-				},
-				{
-					text: `${Menu.Localization.Localize("To lotuses:")} ${this.menu.lotusRemindRange.value}${Menu.Localization.Localize("s")}`
-				}
-			]
-			this.SendNotif(componentRemind, "other")
+			this.SendNotif(componentsRemind)
 		}
 	}
 
@@ -630,15 +652,13 @@ new (class CNotifications {
 		if (
 			rune.Remaining > 0 &&
 			rune.Remaining < 0.05 &&
-			GameRules!.GameTime > 0 &&
-			this.menu.runeState.value
+			!(rune instanceof RuneSpawnerPowerup && rune.SpawnPosition.x > 0)
 		) {
 			this.SendNotif(components)
 		} else if (
 			rune.Remaining > this.menu.runeRemindRange.value &&
 			rune.Remaining < this.menu.runeRemindRange.value + 0.05 &&
 			this.menu.runeRemindState.value &&
-			GameRules!.GameTime > 0 &&
 			componentsRemind[1].text !== ""
 		) {
 			this.SendNotif(componentsRemind)

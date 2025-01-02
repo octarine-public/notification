@@ -11,7 +11,7 @@ export class GameNotification extends Notification {
 	private readonly components: { image?: string; text?: string; background?: string }[]
 	private readonly minWidth = 166
 	private readonly maxWidth = 312
-	private readonly minFontSize = 8
+	private readonly minFontSize = 12 // check 8
 	private readonly maxFontSize = 20
 
 	constructor(
@@ -71,14 +71,94 @@ export class GameNotification extends Notification {
 			this.components[3].text
 		) {
 			this.drawImageTextImageText(notificationSize, alpha)
+		} else if (
+			this.components.length === 4 &&
+			this.components[0].image &&
+			this.components[1].text &&
+			this.components[2].text &&
+			this.components[3].background
+		) {
+			this.drawImageTextText(notificationSize, alpha)
 		}
+	}
+
+	private drawImageTextText(notificationSize: Rectangle, alpha: Color) {
+		const [leftImageComponent, text1Component, text2Component, back] = this.components
+
+		const imageSize = this.getImageSize(notificationSize)
+		const textHeightPaddings = notificationSize.Height / 2 - 6
+		const leftPadding = imageSize.Width * 0.2
+		const componetsMargin = this.getComponentsMargin(notificationSize)
+		const letterWidth = this.getLetterWidth(notificationSize)
+		const text1 = text1Component.text!
+		const text2 = text2Component.text!
+		const lowLetters = this.countLowLetters(text1)
+
+		const leftImagePosition = notificationSize.Clone()
+		leftImagePosition.Width = imageSize.Width
+		leftImagePosition.Height = imageSize.Height
+		leftImagePosition.x += leftPadding
+		leftImagePosition.y += (notificationSize.Height - imageSize.Height) / 2
+
+		const textPosition = notificationSize.Clone()
+		textPosition.Width = letterWidth * (text1.length - lowLetters)
+		textPosition.x =
+			leftImagePosition.x + leftImagePosition.Width + componetsMargin * 2
+		textPosition.y += textHeightPaddings
+
+		const backPosition = notificationSize.Clone()
+		backPosition.Width = notificationSize.Width / 3
+		backPosition.Height = notificationSize.Height
+		backPosition.x =
+			notificationSize.x + (notificationSize.Width - backPosition.Width)
+
+		const backTextPos = notificationSize.Clone()
+		backTextPos.x = backPosition.x + backPosition.Height / 5
+		backTextPos.y += textHeightPaddings / 3
+
+		RendererSDK.Image(
+			leftImageComponent.image!,
+			leftImagePosition.pos1,
+			-1,
+			imageSize.Size,
+			alpha
+		)
+
+		RendererSDK.Text(
+			text1,
+			textPosition.pos1,
+			Color.White,
+			RendererSDK.DefaultFontName,
+			this.getFontSize(notificationSize),
+			18
+		)
+
+		RendererSDK.Image(
+			back.background!,
+			backPosition.pos1,
+			-1,
+			backPosition.Size,
+			alpha
+		)
+
+		RendererSDK.Text(
+			text2,
+			backTextPos.pos1,
+			Color.White,
+			RendererSDK.DefaultFontName,
+			this.getFontSize(notificationSize) * 1.2,
+			22,
+			false,
+			true
+		)
 	}
 
 	private drawImageTextImageText(notificationSize: Rectangle, alpha: Color) {
 		const [image1, text1, image2, text2] = this.components
 
 		const imageSize = this.getImageSize(notificationSize)
-		const componetsMargin = this.getComponentsMargin(notificationSize)
+		const componetsMargin = this.getComponentsMargin(notificationSize) * 2
+		const textHeightPaddings = notificationSize.Height / 2 - 6
 		const text1Content = text1.text!
 		const letterWidth = this.getLetterWidth(notificationSize)
 		const lowLetters = this.countLowLetters(text1Content)
@@ -93,7 +173,7 @@ export class GameNotification extends Notification {
 		const text1Position = notificationSize.Clone()
 		text1Position.Width = letterWidth * (text1Content.length - lowLetters)
 		text1Position.x = image1Position.x + image1Position.Width + componetsMargin
-		text1Position.y += notificationSize.Height / 2 - 6
+		text1Position.y += textHeightPaddings
 
 		const image2Position = notificationSize.Clone()
 		image2Position.Width = imageSize.Width
@@ -106,7 +186,7 @@ export class GameNotification extends Notification {
 			notificationSize.Width -
 			(image1Position.Width + text1Position.Width + image2Position.Width)
 		text2Position.x = image2Position.x + image2Position.Width + componetsMargin
-		text2Position.y += notificationSize.Height / 2 - 6
+		text2Position.y += textHeightPaddings
 
 		RendererSDK.Image(image1.image!, image1Position.pos1, -1, imageSize.Size, alpha)
 
@@ -135,6 +215,7 @@ export class GameNotification extends Notification {
 		const [imageComponent, textComponent, background] = this.components
 
 		const imageSize = this.getImageSize(notificationSize)
+		const textHeightPaddings = notificationSize.Height / 2 - 6
 		const imagesMargin = imageSize.Width * 0.2
 		const componetsMargin = this.getComponentsMargin(notificationSize)
 		const letterWidth = this.getLetterWidth(notificationSize)
@@ -150,7 +231,7 @@ export class GameNotification extends Notification {
 		const textPosition = notificationSize.Clone()
 		textPosition.Width = letterWidth * (text.length - lowLetters)
 		textPosition.x = imagePosition.x + imagePosition.Height + componetsMargin
-		textPosition.y += notificationSize.Height / 2 - 6
+		textPosition.y += textHeightPaddings
 
 		const backPosition = notificationSize.Clone()
 		backPosition.Width = notificationSize.Width / 5
@@ -188,6 +269,7 @@ export class GameNotification extends Notification {
 		const [leftImageComponent, textComponent, rightImageComponent] = this.components
 
 		const imageSize = this.getImageSize(notificationSize)
+		const textHeightPaddings = notificationSize.Height / 2 - 6
 		const leftPadding = imageSize.Width * 0.2
 		const componetsMargin = this.getComponentsMargin(notificationSize)
 		const letterWidth = this.getLetterWidth(notificationSize)
@@ -203,7 +285,7 @@ export class GameNotification extends Notification {
 		const textPosition = notificationSize.Clone()
 		textPosition.Width = letterWidth * (text.length - lowLetters)
 		textPosition.x = leftImagePosition.x + leftImagePosition.Width + componetsMargin
-		textPosition.y += notificationSize.Height / 2 - 6
+		textPosition.y += textHeightPaddings
 
 		const rightImagePosition = leftImagePosition.Clone()
 		rightImagePosition.x = textPosition.x + textPosition.Width + componetsMargin

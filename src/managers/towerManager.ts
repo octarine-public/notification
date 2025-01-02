@@ -18,7 +18,5 @@ export class towerManager {
 				return tower.Name
 			}
 		}
-
-		return undefined
 	}
 }
