@@ -11,7 +11,7 @@ export class GameNotification extends Notification {
 	private readonly components: { image?: string; text?: string; background?: string }[]
 	private readonly minWidth = 166
 	private readonly maxWidth = 312
-	private readonly minFontSize = 12 // check 8
+	private readonly minFontSize = 8
 	private readonly maxFontSize = 20
 
 	constructor(
@@ -102,19 +102,18 @@ export class GameNotification extends Notification {
 
 		const textPosition = notificationSize.Clone()
 		textPosition.Width = letterWidth * (text1.length - lowLetters)
-		textPosition.x =
-			leftImagePosition.x + leftImagePosition.Width + componetsMargin * 2
+		textPosition.x = leftImagePosition.x + leftImagePosition.Width + componetsMargin
 		textPosition.y += textHeightPaddings
 
 		const backPosition = notificationSize.Clone()
-		backPosition.Width = notificationSize.Width / 3
+		backPosition.Width = notificationSize.Width / 5
 		backPosition.Height = notificationSize.Height
 		backPosition.x =
 			notificationSize.x + (notificationSize.Width - backPosition.Width)
 
 		const backTextPos = notificationSize.Clone()
-		backTextPos.x = backPosition.x + backPosition.Height / 5
-		backTextPos.y += textHeightPaddings / 3
+		backTextPos.x = textPosition.x + textPosition.Width + componetsMargin
+		backTextPos.y += textHeightPaddings
 
 		RendererSDK.Image(
 			leftImageComponent.image!,
@@ -129,7 +128,7 @@ export class GameNotification extends Notification {
 			textPosition.pos1,
 			Color.White,
 			RendererSDK.DefaultFontName,
-			this.getFontSize(notificationSize),
+			this.getFontSize(notificationSize) * 1.3,
 			18
 		)
 
@@ -146,8 +145,8 @@ export class GameNotification extends Notification {
 			backTextPos.pos1,
 			Color.White,
 			RendererSDK.DefaultFontName,
-			this.getFontSize(notificationSize) * 1.2,
-			22,
+			this.getFontSize(notificationSize) * 1.5,
+			18,
 			false,
 			true
 		)
@@ -157,7 +156,7 @@ export class GameNotification extends Notification {
 		const [image1, text1, image2, text2] = this.components
 
 		const imageSize = this.getImageSize(notificationSize)
-		const componetsMargin = this.getComponentsMargin(notificationSize) * 2
+		const componetsMargin = this.getComponentsMargin(notificationSize)
 		const textHeightPaddings = notificationSize.Height / 2 - 6
 		const text1Content = text1.text!
 		const letterWidth = this.getLetterWidth(notificationSize)
@@ -347,7 +346,7 @@ export class GameNotification extends Notification {
 	}
 
 	private getComponentsMargin(componentSize: Rectangle): number {
-		const baseMargin = this.maxWidth * 0.02
+		const baseMargin = this.maxWidth * 0.04
 		const scale = componentSize.Width / this.maxWidth
 		return baseMargin * scale
 	}

@@ -131,7 +131,9 @@ new (class CNotifications {
 					)
 				},
 				{ text: Menu.Localization.Localize("teleporting") },
-				{ text: `${towerData[1]}\n${towerData[2]}` },
+				{
+					text: `${Menu.Localization.Localize(towerData[1])} ${Menu.Localization.Localize(towerData[2])}`.toLocaleUpperCase()
+				},
 				{ background: towerTeam }
 			]
 			this.SendNotif(componets)
@@ -363,12 +365,11 @@ new (class CNotifications {
 						this.menu.itemsState.IsEnabled(newItem.Name) ||
 						newItem.AbilityData.Cost >= this.menu.notifCostRange.value
 					) {
-						const parsedName = this.parseName(newItem.Name)
 						const components = [
 							{ image: ImageData.GetHeroTexture(unit.Name, false) },
 							{ text: Menu.Localization.Localize("Bought") },
 							{ image: ImageData.GetItemTexture(newItem.Name) },
-							{ text: parsedName }
+							{ text: newItem.AbilityData.ItemAliases[0] }
 						]
 						this.SendNotif(components)
 					}
