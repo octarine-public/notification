@@ -144,7 +144,7 @@ new (class CNotifications {
 		if (
 			!(unit instanceof npc_dota_hero_rubick) ||
 			!unit.IsEnemy() ||
-			!this.menu.rubickStolenState.value
+			!this.menu.spellsState.IsEnabled("rubick_spell_steal")
 		) {
 			return
 		}

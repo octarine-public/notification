@@ -17,7 +17,6 @@ export class MenuManager {
 
 	public readonly scanState: Menu.Toggle
 	public readonly glyphState: Menu.Toggle
-	public readonly rubickStolenState: Menu.Toggle
 
 	public readonly itemTree: Menu.Node
 	public readonly itemState: Menu.Toggle
@@ -40,20 +39,35 @@ export class MenuManager {
 	public readonly spellUsedState: Menu.Toggle
 	public readonly spellsState: Menu.ImageSelector
 	private readonly spells: string[] = [
+		"abaddon_borrowed_time",
+		"alchemist_chemical_rage",
+		"arc_warden_tempest_double",
+		"bane_fiends_grip",
+		"batrider_flaming_lasso",
+		"beastmaster_primal_roar",
+		"centaur_stampede",
+		"dark_seer_wall_of_replica",
+		"death_prophet_exorcism",
+		"disruptor_static_storm",
+		"earthshaker_echo_slam",
+		"elder_titan_earth_splitter",
 		"enigma_black_hole",
 		"faceless_void_chronosphere",
 		"invoker_sun_strike",
-		"disruptor_static_storm",
-		"earthshaker_echo_slam",
-		"sandking_epicenter",
-		"terrorblade_metamorphosis",
+		"jakiro_macropyre",
+		"keeper_of_the_light_will_o_wisp",
+		"lich_chain_frost",
 		"magnataur_reverse_polarity",
-		"abaddon_borrowed_time",
-		"bane_fiends_grip",
-		"beastmaster_primal_roar",
-		"batrider_flaming_lasso",
-		"centaur_stampede",
-		"death_prophet_exorcism"
+		"medusa_stone_gaze",
+		"naga_siren_song_of_the_siren",
+		"oracle_false_promise",
+		"phoenix_supernova",
+		"rubick_spell_steal",
+		"sandking_epicenter",
+		"shadow_shaman_mass_serpent_ward",
+		"spectre_haunt",
+		"terrorblade_metamorphosis",
+		"tidehunter_ravage"
 	]
 
 	public readonly lotusTree: Menu.Node
@@ -85,11 +99,6 @@ export class MenuManager {
 
 		this.scanState = this.tree.AddToggle("Scans", true)
 		this.glyphState = this.tree.AddToggle("Glyphs", true)
-		this.rubickStolenState = this.tree.AddToggle(
-			"Stolen Spells",
-			true,
-			"What spell has been stolen by Rubick"
-		)
 
 		this.spellsTree = this.tree.AddNode("Spells")
 		this.spellState = this.spellsTree.AddToggle("Notifications", true, "", -1)
